@@ -1,6 +1,6 @@
 [package]
 name = "mntn"
-version = "4.0.1"
+version = "4.0.2"
 edition = "2024"
 description = "A Rust-based command-line tool for dotfiles management with profiles."
 authors = ["atrtde"]
