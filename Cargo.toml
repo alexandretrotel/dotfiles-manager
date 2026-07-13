@@ -3,10 +3,10 @@ name = "mntn"
 version = "4.0.1"
 edition = "2024"
 description = "A Rust-based command-line tool for dotfiles management with profiles."
-authors = ["alexandretrotel"]
+authors = ["atrtde"]
 documentation = "https://docs.rs/mntn"
-repository = "https://github.com/alexandretrotel/mntn"
-homepage = "https://github.com/alexandretrotel/mntn"
+repository = "https://github.com/atrtde/mntn"
+homepage = "https://github.com/atrtde/mntn"
 license = "GPL-3.0-or-later"
 exclude = ["assets/*", ".github/*"]
 
