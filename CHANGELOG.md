@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## v4.0.2
+
+### Changed
+- Replaced `anyhow` with `eyre` for error handling (native `wrap_err` API).
+
 ## v4.0.0
 
 ### Changed

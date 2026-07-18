@@ -7,7 +7,7 @@ use crate::utils::{
     paths::{ENCRYPTED_BUNDLE_FILE, get_encrypted_registry_path},
 };
 use age::secrecy::SecretString;
-use anyhow::{Context, Result};
+use eyre::{Result, WrapErr};
 use std::fs;
 use std::path::Path;
 
@@ -16,7 +16,7 @@ pub fn backup_encrypted_configs(
     ask_password: bool,
 ) -> Result<(u32, u32)> {
     let password = resolve_encryption_password(ask_password, true)
-        .context("Prompt for encryption password before encrypted backup")?;
+        .wrap_err("Prompt for encryption password before encrypted backup")?;
 
     backup_encrypted_configs_with_password(encrypted_backup_path, &password)
 }
@@ -27,7 +27,7 @@ fn backup_encrypted_configs_with_password(
 ) -> Result<(u32, u32)> {
     let registry_path = get_encrypted_registry_path();
     let encrypted_registry = EncryptedRegistry::load_or_create(&registry_path)
-        .with_context(|| format!("Load encrypted registry: {}", registry_path.display()))?;
+        .wrap_err_with(|| format!("Load encrypted registry: {}", registry_path.display()))?;
 
     let enabled_entries: Vec<_> = encrypted_registry.get_enabled_entries().collect();
 
@@ -85,11 +85,11 @@ fn backup_encrypted_configs_with_password(
         .map(|(source, target)| (source.as_str(), target.as_path()))
         .collect();
 
-    let tar_temp = create_temp_path("enc-bundle-tar").context("Create temporary tar path")?;
+    let tar_temp = create_temp_path("enc-bundle-tar").wrap_err("Create temporary tar path")?;
 
     let backup_result: Result<()> = (|| {
         write_entries_tar(&tar_temp, &tar_refs)?;
-        encrypt_file(&tar_temp, &bundle_destination, password).context("Encrypt config bundle")?;
+        encrypt_file(&tar_temp, &bundle_destination, password).wrap_err("Encrypt config bundle")?;
         Ok(())
     })();
 

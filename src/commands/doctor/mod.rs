@@ -31,7 +31,7 @@ impl Command for DoctorTask {
         "Doctor"
     }
 
-    fn execute(&mut self) -> anyhow::Result<()> {
+    fn execute(&mut self) -> eyre::Result<()> {
         println!("Validating configuration...");
         println!("   Profile: {}", self.profile);
         println!("Starting validation");
@@ -56,7 +56,7 @@ impl Command for DoctorTask {
             );
         }
         if error_count > 0 {
-            return Err(anyhow::anyhow!(
+            return Err(eyre::eyre!(
                 "Validation failed: {} error(s), {} warning(s)",
                 error_count,
                 warning_count

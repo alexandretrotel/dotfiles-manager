@@ -1,5 +1,5 @@
 use crate::utils::display::{green, red};
-use anyhow::Result;
+use eyre::Result;
 
 pub(crate) trait Command {
     fn name(&self) -> &str;

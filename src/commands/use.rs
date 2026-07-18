@@ -3,7 +3,7 @@ use crate::commands::core::{Command, CommandExecutor};
 use crate::profiles::{
     ProfileConfig, clear_active_profile, get_active_profile_name, set_active_profile,
 };
-use anyhow::bail;
+use eyre::bail;
 
 const COMMON: &str = "common";
 const NONE: &str = "none";
@@ -27,7 +27,7 @@ impl Command for UseTask {
         "Use"
     }
 
-    fn execute(&mut self) -> anyhow::Result<()> {
+    fn execute(&mut self) -> eyre::Result<()> {
         let config = ProfileConfig::load_or_default();
 
         if self.is_clearing_profile() {

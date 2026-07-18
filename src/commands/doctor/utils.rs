@@ -9,7 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 /// Resolve every enabled `.json` config entry to its on-disk path for the given
 /// profile. Shared by the JSON validator and `doctor fix` so both walk the same
 /// set of files.
-pub fn enabled_json_files(profile: &ActiveProfile) -> anyhow::Result<Vec<(PathBuf, String)>> {
+pub fn enabled_json_files(profile: &ActiveProfile) -> eyre::Result<Vec<(PathBuf, String)>> {
     let config_registry_path = get_config_registry_path();
     let config_registry = ConfigRegistry::load_or_create(&config_registry_path)?;
 

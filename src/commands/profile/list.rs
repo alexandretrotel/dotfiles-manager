@@ -1,5 +1,5 @@
 use crate::profiles::{ProfileConfig, get_active_profile_name};
-use anyhow::Result;
+use eyre::Result;
 
 pub(crate) fn list_profiles() -> Result<()> {
     let config = ProfileConfig::load_or_default();

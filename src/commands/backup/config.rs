@@ -2,14 +2,14 @@ use super::utils::{backup_directory, backup_file};
 use crate::registry::config::ConfigRegistry;
 use crate::utils::display::{green, yellow};
 use crate::utils::paths::get_config_registry_path;
-use anyhow::{Context, Result};
+use eyre::{Result, WrapErr};
 use std::fs;
 use std::path::Path;
 
 pub fn backup_configs(configs_path: &Path) -> Result<(u32, u32)> {
     let config_registry_path = get_config_registry_path();
     let config_registry = ConfigRegistry::load_or_create(&config_registry_path)
-        .with_context(|| format!("Load config registry: {}", config_registry_path.display()))?;
+        .wrap_err_with(|| format!("Load config registry: {}", config_registry_path.display()))?;
 
     let enabled_entries: Vec<_> = config_registry.get_enabled_entries().collect();
 
@@ -29,13 +29,13 @@ pub fn backup_configs(configs_path: &Path) -> Result<(u32, u32)> {
 
         let entry_result: Result<()> = (|| {
             if let Some(parent) = backup_destination.parent() {
-                fs::create_dir_all(parent).with_context(|| {
+                fs::create_dir_all(parent).wrap_err_with(|| {
                     format!("Prepare backup path {} ({})", parent.display(), id)
                 })?;
             }
 
             if target_path.is_dir() {
-                backup_directory(target_path, &backup_destination).with_context(|| {
+                backup_directory(target_path, &backup_destination).wrap_err_with(|| {
                     format!(
                         "Copy directory {} -> {}",
                         target_path.display(),
@@ -43,7 +43,7 @@ pub fn backup_configs(configs_path: &Path) -> Result<(u32, u32)> {
                     )
                 })
             } else {
-                backup_file(target_path, &backup_destination).with_context(|| {
+                backup_file(target_path, &backup_destination).wrap_err_with(|| {
                     format!(
                         "Copy file {} -> {}",
                         target_path.display(),

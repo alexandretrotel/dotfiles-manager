@@ -1,7 +1,7 @@
 use crate::cli::SecretActions;
 use crate::commands::core::{Command, CommandExecutor};
 use crate::encryption::{clear_stored_encryption_password, persist_encryption_password};
-use anyhow::Result;
+use eyre::Result;
 
 struct SecretSetTask;
 

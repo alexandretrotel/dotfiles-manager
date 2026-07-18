@@ -1,6 +1,6 @@
 use crate::profiles::ProfileConfig;
 use crate::utils::paths::{get_profiles_config_path, get_profiles_path};
-use anyhow::{Context, Result, bail};
+use eyre::{Result, WrapErr, bail};
 use std::fs;
 
 pub(crate) fn create_profile(name: &str, description: Option<String>) -> Result<()> {
@@ -29,10 +29,10 @@ pub(crate) fn create_profile(name: &str, description: Option<String>) -> Result<
 
     config
         .save(&path)
-        .with_context(|| format!("Save profile config to {}", path.display()))?;
+        .wrap_err_with(|| format!("Save profile config to {}", path.display()))?;
 
     let profile_dir = get_profiles_path(name);
-    fs::create_dir_all(&profile_dir).with_context(|| {
+    fs::create_dir_all(&profile_dir).wrap_err_with(|| {
         format!(
             "Create profile directory at {} (config was saved)",
             profile_dir.display()

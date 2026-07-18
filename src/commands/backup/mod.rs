@@ -29,7 +29,7 @@ impl Command for BackupTask {
         "Backup"
     }
 
-    fn execute(&mut self) -> anyhow::Result<()> {
+    fn execute(&mut self) -> eyre::Result<()> {
         let mntn_dir = get_mntn_dir();
         crate::commands::git::init_repo_if_missing(&mntn_dir)?;
 

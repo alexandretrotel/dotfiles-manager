@@ -31,7 +31,7 @@ impl Command for FixTask {
         "Doctor fix"
     }
 
-    fn execute(&mut self) -> anyhow::Result<()> {
+    fn execute(&mut self) -> eyre::Result<()> {
         if self.dry_run {
             println!("Reformatting JSON configs (dry run)...");
         } else {
@@ -87,7 +87,7 @@ impl Command for FixTask {
         );
 
         if unfixable > 0 {
-            return Err(anyhow::anyhow!(
+            return Err(eyre::eyre!(
                 "{} file(s) have syntax errors serde_json cannot repair",
                 unfixable
             ));

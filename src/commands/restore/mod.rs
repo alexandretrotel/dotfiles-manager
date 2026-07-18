@@ -30,7 +30,7 @@ impl Command for RestoreTask {
         "Restore"
     }
 
-    fn execute(&mut self) -> anyhow::Result<()> {
+    fn execute(&mut self) -> eyre::Result<()> {
         let config_registry_path = get_config_registry_path();
         let config_registry = ConfigRegistry::load_or_create(&config_registry_path)?;
 

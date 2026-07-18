@@ -1,6 +1,6 @@
 [package]
 name = "mntn"
-version = "4.0.1"
+version = "4.0.2"
 edition = "2024"
 description = "A Rust-based command-line tool for dotfiles management with profiles."
 authors = ["alexandretrotel"]
@@ -16,7 +16,7 @@ path = "src/main.rs"
 
 [dependencies]
 age = "0.11"
-anyhow = "1.0"
+eyre = "0.6"
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 rpassword = "7.4"
 clap = { version = "4.5", features = ["derive"] }

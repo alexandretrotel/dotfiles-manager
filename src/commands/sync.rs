@@ -4,8 +4,8 @@ use crate::commands::git::run_cmd_passthrough;
 use crate::utils::display::yellow;
 use crate::utils::paths::get_mntn_dir;
 use crate::utils::system::run_cmd;
-use anyhow::{Context, Result, bail};
 use chrono::Utc;
+use eyre::{Result, WrapErr, bail};
 use std::path::Path;
 use std::process::Command as ProcessCommand;
 
@@ -38,7 +38,7 @@ impl SyncTask {
             .args(["diff", "--cached", "--quiet"])
             .current_dir(repo)
             .status()
-            .context("Checking staged changes")?;
+            .wrap_err("Checking staged changes")?;
 
         match status.code() {
             Some(0) => Ok(false),
@@ -54,7 +54,7 @@ impl Command for SyncTask {
         "Sync"
     }
 
-    fn execute(&mut self) -> anyhow::Result<()> {
+    fn execute(&mut self) -> eyre::Result<()> {
         let repo_dir = get_mntn_dir();
         crate::commands::git::ensure_git_repo(&repo_dir)?;
 
