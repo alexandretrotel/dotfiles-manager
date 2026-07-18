@@ -79,14 +79,14 @@ impl Command for ProfileShowTask {
     }
 }
 
-pub(crate) fn run(args: ProfileArgs) {
+pub(crate) fn run(args: ProfileArgs) -> eyre::Result<()> {
     match args.action {
         Some(ProfileActions::List) => CommandExecutor::run(&mut ProfileListTask),
         Some(ProfileActions::Create { name, description }) => {
-            CommandExecutor::run(&mut ProfileCreateTask::new(name, description));
+            CommandExecutor::run(&mut ProfileCreateTask::new(name, description))
         }
         Some(ProfileActions::Delete { name }) => {
-            CommandExecutor::run(&mut ProfileDeleteTask::new(name));
+            CommandExecutor::run(&mut ProfileDeleteTask::new(name))
         }
         None => CommandExecutor::run(&mut ProfileShowTask),
     }

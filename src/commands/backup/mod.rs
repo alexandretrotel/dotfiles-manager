@@ -69,7 +69,7 @@ impl Command for BackupTask {
     }
 }
 
-pub(crate) fn run(args: crate::cli::BackupArgs) {
+pub(crate) fn run(args: crate::cli::BackupArgs) -> eyre::Result<()> {
     use crate::commands::core::CommandExecutor;
 
     let profile = args.resolve_profile();
@@ -77,5 +77,5 @@ pub(crate) fn run(args: crate::cli::BackupArgs) {
         profile,
         args.skip_encrypted,
         args.ask_password,
-    ));
+    ))
 }

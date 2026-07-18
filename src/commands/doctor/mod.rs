@@ -67,7 +67,7 @@ impl Command for DoctorTask {
     }
 }
 
-pub(crate) fn run(args: crate::cli::DoctorArgs) {
+pub(crate) fn run(args: crate::cli::DoctorArgs) -> eyre::Result<()> {
     if let Ok(true) = ProfileConfig::save_default_if_missing() {
         println!("Created default profile config at ~/.mntn/profiles.json");
     }
@@ -75,7 +75,7 @@ pub(crate) fn run(args: crate::cli::DoctorArgs) {
     match args.action {
         Some(DoctorActions::Fix(fix_args)) => {
             let profile = fix_args.resolve_profile();
-            CommandExecutor::run(&mut fix::FixTask::new(profile, fix_args.dry_run));
+            CommandExecutor::run(&mut fix::FixTask::new(profile, fix_args.dry_run))
         }
         None => {
             let profile = args.resolve_profile();
@@ -83,7 +83,7 @@ pub(crate) fn run(args: crate::cli::DoctorArgs) {
                 profile,
                 args.skip_encrypted,
                 args.ask_password,
-            ));
+            ))
         }
     }
 }

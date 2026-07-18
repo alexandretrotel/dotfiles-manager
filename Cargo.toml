@@ -17,6 +17,7 @@ path = "src/main.rs"
 [dependencies]
 age = "0.11"
 eyre = "0.6"
+color-eyre = { version = "0.6", default-features = false }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 rpassword = "7.4"
 clap = { version = "4.5", features = ["derive"] }

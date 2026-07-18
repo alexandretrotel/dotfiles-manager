@@ -5,7 +5,10 @@ All notable changes to this project are documented in this file.
 ## v4.0.2
 
 ### Changed
-- Replaced `anyhow` with `eyre` for error handling (native `wrap_err` API).
+- Replaced `anyhow` with `eyre` and `color-eyre` for error handling. Failures now render a colored report with the full cause chain (native `wrap_err` API) and actionable suggestions (e.g. unknown profile, missing git repository).
+
+### Fixed
+- Commands now exit with a non-zero status when they fail. Previously errors were caught and printed but the process still exited `0`, so shell chains (`mntn a && mntn b`) and CI could not detect failures.
 
 ## v4.0.0
 

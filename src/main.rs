@@ -1,3 +1,4 @@
-fn main() {
-    mntn::run();
+fn main() -> color_eyre::Result<()> {
+    color_eyre::install()?;
+    mntn::run()
 }

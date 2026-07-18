@@ -27,7 +27,7 @@ impl Command for SecretDeleteTask {
     }
 }
 
-pub(crate) fn run(action: SecretActions) {
+pub(crate) fn run(action: SecretActions) -> eyre::Result<()> {
     match action {
         SecretActions::Set => CommandExecutor::run(&mut SecretSetTask),
         SecretActions::Delete => CommandExecutor::run(&mut SecretDeleteTask),

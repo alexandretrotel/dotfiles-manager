@@ -91,12 +91,12 @@ impl Command for RestoreTask {
     }
 }
 
-pub(crate) fn run(args: crate::cli::RestoreArgs) {
+pub(crate) fn run(args: crate::cli::RestoreArgs) -> eyre::Result<()> {
     use crate::commands::core::CommandExecutor;
     let profile = args.resolve_profile();
     CommandExecutor::run(&mut RestoreTask::new(
         profile,
         args.skip_encrypted,
         args.ask_password,
-    ));
+    ))
 }

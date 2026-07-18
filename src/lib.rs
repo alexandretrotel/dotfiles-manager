@@ -10,7 +10,7 @@ use clap::{CommandFactory, Parser};
 use cli::{Cli, Commands};
 use commands::{backup, doctor, git, profile, restore, secret, sync, r#use};
 
-pub fn run() {
+pub fn run() -> eyre::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
@@ -23,7 +23,9 @@ pub fn run() {
         Some(Commands::Doctor(args)) => doctor::run(args),
         Some(Commands::Secret { action }) => secret::run(action),
         None => {
-            Cli::command().print_help().expect("Failed to print help");
+            Cli::command().print_help()?;
+            println!();
+            Ok(())
         }
     }
 }

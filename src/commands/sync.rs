@@ -72,7 +72,7 @@ impl Command for SyncTask {
     }
 }
 
-pub(crate) fn run(args: SyncArgs) {
+pub(crate) fn run(args: SyncArgs) -> eyre::Result<()> {
     let mut task = SyncTask::new(args.message);
-    CommandExecutor::run(&mut task);
+    CommandExecutor::run(&mut task)
 }

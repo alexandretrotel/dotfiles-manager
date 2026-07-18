@@ -2,8 +2,9 @@ use crate::cli::GitArgs;
 use crate::commands::core::{Command, CommandExecutor};
 use crate::utils::paths::get_mntn_dir;
 use crate::utils::system::run_cmd;
+use color_eyre::Help;
 use eyre::Result;
-use eyre::bail;
+use eyre::{bail, eyre};
 use std::fs;
 use std::path::Path;
 use std::process::{Command as ProcessCommand, Stdio};
@@ -29,8 +30,8 @@ impl Command for GitPassthroughTask {
     }
 }
 
-pub(crate) fn run(args: GitArgs) {
-    CommandExecutor::run(&mut GitPassthroughTask::new(args.args));
+pub(crate) fn run(args: GitArgs) -> eyre::Result<()> {
+    CommandExecutor::run(&mut GitPassthroughTask::new(args.args))
 }
 
 fn run_git_passthrough(args: Vec<String>) -> Result<()> {
@@ -63,7 +64,8 @@ pub(crate) fn run_cmd_passthrough(cmd: &str, args: &[&str], dir: Option<&Path>) 
 
 pub(crate) fn ensure_git_repo(mntn_dir: &Path) -> Result<()> {
     if !mntn_dir.join(".git").exists() {
-        bail!("No git repository found in ~/.mntn. Run 'mntn backup' to initialize it.");
+        return Err(eyre!("No git repository found in ~/.mntn"))
+            .suggestion("Run 'mntn backup' to initialize it.");
     }
 
     ensure_gitignore_exists(mntn_dir)?;
