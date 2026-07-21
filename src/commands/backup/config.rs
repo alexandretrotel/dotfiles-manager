@@ -2,7 +2,7 @@ use super::utils::{backup_directory, backup_file};
 use crate::registry::config::ConfigRegistry;
 use crate::utils::display::{green, yellow};
 use crate::utils::paths::get_config_registry_path;
-use eyre::{Result, WrapErr};
+use color_eyre::eyre::{Result, WrapErr};
 use std::fs;
 use std::path::Path;
 

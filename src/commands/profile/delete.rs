@@ -1,6 +1,6 @@
 use crate::profiles::{ProfileConfig, get_active_profile_name};
 use crate::utils::paths::{get_profiles_config_path, get_profiles_path};
-use eyre::{Result, WrapErr, bail};
+use color_eyre::eyre::{Result, WrapErr, bail};
 
 pub(crate) fn delete_profile(name: &str) -> Result<()> {
     let path = get_profiles_config_path();

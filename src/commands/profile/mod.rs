@@ -12,7 +12,7 @@ impl Command for ProfileListTask {
         "Profile list"
     }
 
-    fn execute(&mut self) -> eyre::Result<()> {
+    fn execute(&mut self) -> color_eyre::eyre::Result<()> {
         list::list_profiles()
     }
 }
@@ -33,7 +33,7 @@ impl Command for ProfileCreateTask {
         "Profile create"
     }
 
-    fn execute(&mut self) -> eyre::Result<()> {
+    fn execute(&mut self) -> color_eyre::eyre::Result<()> {
         create::create_profile(&self.name, self.description.clone())
     }
 }
@@ -53,7 +53,7 @@ impl Command for ProfileDeleteTask {
         "Profile delete"
     }
 
-    fn execute(&mut self) -> eyre::Result<()> {
+    fn execute(&mut self) -> color_eyre::eyre::Result<()> {
         delete::delete_profile(&self.name)
     }
 }
@@ -65,7 +65,7 @@ impl Command for ProfileShowTask {
         "Profile"
     }
 
-    fn execute(&mut self) -> eyre::Result<()> {
+    fn execute(&mut self) -> color_eyre::eyre::Result<()> {
         let current = crate::profiles::get_active_profile_name();
         match current {
             Some(name) => println!("Active profile: {}", name),
@@ -79,7 +79,7 @@ impl Command for ProfileShowTask {
     }
 }
 
-pub(crate) fn run(args: ProfileArgs) -> eyre::Result<()> {
+pub(crate) fn run(args: ProfileArgs) -> color_eyre::eyre::Result<()> {
     match args.action {
         Some(ProfileActions::List) => CommandExecutor::run(&mut ProfileListTask),
         Some(ProfileActions::Create { name, description }) => {

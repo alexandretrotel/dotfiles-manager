@@ -31,7 +31,7 @@ impl Command for DoctorTask {
         "Doctor"
     }
 
-    fn execute(&mut self) -> eyre::Result<()> {
+    fn execute(&mut self) -> color_eyre::eyre::Result<()> {
         println!("Validating configuration...");
         println!("   Profile: {}", self.profile);
         println!("Starting validation");
@@ -56,7 +56,7 @@ impl Command for DoctorTask {
             );
         }
         if error_count > 0 {
-            return Err(eyre::eyre!(
+            return Err(color_eyre::eyre::eyre!(
                 "Validation failed: {} error(s), {} warning(s)",
                 error_count,
                 warning_count
@@ -67,7 +67,7 @@ impl Command for DoctorTask {
     }
 }
 
-pub(crate) fn run(args: crate::cli::DoctorArgs) -> eyre::Result<()> {
+pub(crate) fn run(args: crate::cli::DoctorArgs) -> color_eyre::eyre::Result<()> {
     if let Ok(true) = ProfileConfig::save_default_if_missing() {
         println!("Created default profile config at ~/.mntn/profiles.json");
     }

@@ -2,7 +2,7 @@ use crate::registry::package::{PackageRegistry, PackageRegistryEntry};
 use crate::utils::display::{green, yellow};
 use crate::utils::paths::get_package_registry_path;
 use crate::utils::system::{run_cmd, strip_ansi_codes};
-use eyre::{Result, WrapErr};
+use color_eyre::eyre::{Result, WrapErr};
 use std::fs;
 use std::io::Write;
 use std::path::Path;

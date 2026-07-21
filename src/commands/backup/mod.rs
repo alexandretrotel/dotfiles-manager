@@ -29,7 +29,7 @@ impl Command for BackupTask {
         "Backup"
     }
 
-    fn execute(&mut self) -> eyre::Result<()> {
+    fn execute(&mut self) -> color_eyre::eyre::Result<()> {
         let mntn_dir = get_mntn_dir();
         crate::commands::git::init_repo_if_missing(&mntn_dir)?;
 
@@ -69,7 +69,7 @@ impl Command for BackupTask {
     }
 }
 
-pub(crate) fn run(args: crate::cli::BackupArgs) -> eyre::Result<()> {
+pub(crate) fn run(args: crate::cli::BackupArgs) -> color_eyre::eyre::Result<()> {
     use crate::commands::core::CommandExecutor;
 
     let profile = args.resolve_profile();

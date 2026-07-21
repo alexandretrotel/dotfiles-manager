@@ -1,4 +1,4 @@
-use eyre::{Result, WrapErr};
+use color_eyre::eyre::{Result, WrapErr};
 use std::collections::HashMap;
 use std::fs;
 use std::io::Read;

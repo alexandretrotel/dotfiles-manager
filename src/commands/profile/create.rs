@@ -1,6 +1,6 @@
 use crate::profiles::ProfileConfig;
 use crate::utils::paths::{get_profiles_config_path, get_profiles_path};
-use eyre::{Result, WrapErr, bail};
+use color_eyre::eyre::{Result, WrapErr, bail};
 use std::fs;
 
 pub(crate) fn create_profile(name: &str, description: Option<String>) -> Result<()> {

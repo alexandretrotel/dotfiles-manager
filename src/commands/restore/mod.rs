@@ -30,7 +30,7 @@ impl Command for RestoreTask {
         "Restore"
     }
 
-    fn execute(&mut self) -> eyre::Result<()> {
+    fn execute(&mut self) -> color_eyre::eyre::Result<()> {
         let config_registry_path = get_config_registry_path();
         let config_registry = ConfigRegistry::load_or_create(&config_registry_path)?;
 
@@ -91,7 +91,7 @@ impl Command for RestoreTask {
     }
 }
 
-pub(crate) fn run(args: crate::cli::RestoreArgs) -> eyre::Result<()> {
+pub(crate) fn run(args: crate::cli::RestoreArgs) -> color_eyre::eyre::Result<()> {
     use crate::commands::core::CommandExecutor;
     let profile = args.resolve_profile();
     CommandExecutor::run(&mut RestoreTask::new(

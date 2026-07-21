@@ -5,7 +5,7 @@ use crate::utils::display::yellow;
 use crate::utils::paths::get_mntn_dir;
 use crate::utils::system::run_cmd;
 use chrono::Utc;
-use eyre::{Result, WrapErr, bail};
+use color_eyre::eyre::{Result, WrapErr, bail};
 use std::path::Path;
 use std::process::Command as ProcessCommand;
 
@@ -54,7 +54,7 @@ impl Command for SyncTask {
         "Sync"
     }
 
-    fn execute(&mut self) -> eyre::Result<()> {
+    fn execute(&mut self) -> color_eyre::eyre::Result<()> {
         let repo_dir = get_mntn_dir();
         crate::commands::git::ensure_git_repo(&repo_dir)?;
 
@@ -72,7 +72,7 @@ impl Command for SyncTask {
     }
 }
 
-pub(crate) fn run(args: SyncArgs) -> eyre::Result<()> {
+pub(crate) fn run(args: SyncArgs) -> color_eyre::eyre::Result<()> {
     let mut task = SyncTask::new(args.message);
     CommandExecutor::run(&mut task)
 }

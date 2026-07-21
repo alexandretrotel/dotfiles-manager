@@ -10,7 +10,7 @@ use clap::{CommandFactory, Parser};
 use cli::{Cli, Commands};
 use commands::{backup, doctor, git, profile, restore, secret, sync, r#use};
 
-pub fn run() -> eyre::Result<()> {
+pub fn run() -> color_eyre::eyre::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {

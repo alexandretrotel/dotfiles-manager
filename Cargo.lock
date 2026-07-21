@@ -1263,7 +1263,6 @@ dependencies = [
  "clap",
  "color-eyre",
  "directories-next",
- "eyre",
  "keyring-core",
  "rpassword",
  "serde",

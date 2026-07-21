@@ -7,7 +7,7 @@ use crate::utils::{
     paths::{ENCRYPTED_BUNDLE_FILE, get_encrypted_registry_path},
 };
 use age::secrecy::SecretString;
-use eyre::{Result, WrapErr};
+use color_eyre::eyre::{Result, WrapErr};
 use std::fs;
 use std::path::Path;
 

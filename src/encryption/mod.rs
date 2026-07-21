@@ -2,7 +2,7 @@ mod bundle;
 
 use age::secrecy::ExposeSecret;
 use age::secrecy::SecretString;
-use eyre::{Result, WrapErr, bail};
+use color_eyre::eyre::{Result, WrapErr, bail};
 use keyring_core::{Entry, Error as KeyringError, set_default_store};
 use std::fs;
 use std::io::{Read, Write};
@@ -35,12 +35,12 @@ fn init_default_keyring_store() -> Result<()> {
     bail!("No supported keyring store configured for this operating system");
 }
 
-fn keyring_entry() -> eyre::Result<Entry> {
+fn keyring_entry() -> color_eyre::eyre::Result<Entry> {
     static INIT: OnceLock<Result<()>> = OnceLock::new();
     INIT.get_or_init(init_default_keyring_store)
         .as_ref()
-        .map_err(|e| eyre::eyre!(e.to_string()))?;
-    Entry::new(KEYRING_SERVICE, KEYRING_USERNAME).map_err(eyre::Report::from)
+        .map_err(|e| color_eyre::eyre::eyre!(e.to_string()))?;
+    Entry::new(KEYRING_SERVICE, KEYRING_USERNAME).map_err(color_eyre::eyre::Report::from)
 }
 
 pub(crate) use bundle::{
@@ -88,7 +88,7 @@ pub(crate) fn clear_stored_encryption_password() -> Result<()> {
         Ok(()) => Ok(()),
         Err(KeyringError::NoEntry) => Ok(()),
         Err(e) => {
-            Err(eyre::Report::from(e)).wrap_err("Remove encryption password from system keychain")
+            Err(color_eyre::eyre::Report::from(e)).wrap_err("Remove encryption password from system keychain")
         }
     }
 }

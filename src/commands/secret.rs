@@ -1,7 +1,7 @@
 use crate::cli::SecretActions;
 use crate::commands::core::{Command, CommandExecutor};
 use crate::encryption::{clear_stored_encryption_password, persist_encryption_password};
-use eyre::Result;
+use color_eyre::eyre::Result;
 
 struct SecretSetTask;
 
@@ -27,7 +27,7 @@ impl Command for SecretDeleteTask {
     }
 }
 
-pub(crate) fn run(action: SecretActions) -> eyre::Result<()> {
+pub(crate) fn run(action: SecretActions) -> color_eyre::eyre::Result<()> {
     match action {
         SecretActions::Set => CommandExecutor::run(&mut SecretSetTask),
         SecretActions::Delete => CommandExecutor::run(&mut SecretDeleteTask),

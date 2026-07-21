@@ -1,5 +1,5 @@
 use crate::utils::display::green;
-use eyre::{Result, WrapErr};
+use color_eyre::eyre::{Result, WrapErr};
 
 pub(crate) trait Command {
     fn name(&self) -> &str;

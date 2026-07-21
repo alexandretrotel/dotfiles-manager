@@ -4,7 +4,7 @@ use crate::profiles::{
     ProfileConfig, clear_active_profile, get_active_profile_name, set_active_profile,
 };
 use color_eyre::Help;
-use eyre::eyre;
+use color_eyre::eyre::eyre;
 
 const COMMON: &str = "common";
 const NONE: &str = "none";
@@ -28,7 +28,7 @@ impl Command for UseTask {
         "Use"
     }
 
-    fn execute(&mut self) -> eyre::Result<()> {
+    fn execute(&mut self) -> color_eyre::eyre::Result<()> {
         let config = ProfileConfig::load_or_default();
 
         if self.is_clearing_profile() {
@@ -62,7 +62,7 @@ impl Command for UseTask {
     }
 }
 
-pub(crate) fn run(args: UseArgs) -> eyre::Result<()> {
+pub(crate) fn run(args: UseArgs) -> color_eyre::eyre::Result<()> {
     let mut task = UseTask::new(args.profile);
     CommandExecutor::run(&mut task)
 }

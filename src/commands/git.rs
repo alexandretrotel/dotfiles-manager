@@ -3,8 +3,8 @@ use crate::commands::core::{Command, CommandExecutor};
 use crate::utils::paths::get_mntn_dir;
 use crate::utils::system::run_cmd;
 use color_eyre::Help;
-use eyre::Result;
-use eyre::{bail, eyre};
+use color_eyre::eyre::Result;
+use color_eyre::eyre::{bail, eyre};
 use std::fs;
 use std::path::Path;
 use std::process::{Command as ProcessCommand, Stdio};
@@ -30,7 +30,7 @@ impl Command for GitPassthroughTask {
     }
 }
 
-pub(crate) fn run(args: GitArgs) -> eyre::Result<()> {
+pub(crate) fn run(args: GitArgs) -> color_eyre::eyre::Result<()> {
     CommandExecutor::run(&mut GitPassthroughTask::new(args.args))
 }
 
