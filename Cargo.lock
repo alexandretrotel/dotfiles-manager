@@ -1255,7 +1255,7 @@ dependencies = [
 
 [[package]]
 name = "mntn"
-version = "4.0.3"
+version = "4.0.4"
 dependencies = [
  "age",
  "apple-native-keyring-store",
