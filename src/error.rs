@@ -55,6 +55,8 @@ pub enum Error {
     #[error("could not determine home directory")]
     NoHomeDir,
 
+    /// An error with an attached human-readable context message, preserving
+    /// the original error as its source (see [`WrapErr`]).
     #[error("{msg}")]
     Context {
         msg: String,
@@ -86,7 +88,9 @@ impl From<age::DecryptError> for Error {
 
 /// Attach a context message to an error, preserving the cause chain.
 pub(crate) trait WrapErr<T> {
+    /// Wrap the error (if any) with a fixed context message.
     fn wrap_err(self, msg: impl Into<String>) -> Result<T>;
+    /// Wrap the error (if any) with a lazily-computed context message.
     fn wrap_err_with(self, f: impl FnOnce() -> String) -> Result<T>;
 }
 

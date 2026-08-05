@@ -7,6 +7,9 @@ use tempfile::NamedTempFile;
 
 use crate::error::{Result, WrapErr};
 
+/// Normalize a tar entry path to forward slashes with no leading `./`, so
+/// paths read back out match the `source_path` strings used as archive
+/// member names.
 pub(crate) fn normalize_tar_path(path: &Path) -> String {
     path.to_string_lossy()
         .replace('\\', "/")

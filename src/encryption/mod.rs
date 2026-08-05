@@ -1,4 +1,9 @@
+//! Age-passphrase file encryption, tar bundling for encrypted backups, and
+//! the system-keychain-backed password store.
+
+/// Tar bundling and temp-file helpers used by encrypted backup/restore.
 mod bundle;
+/// System-keychain-backed storage for the encryption password.
 pub mod keyring;
 
 use std::fs;

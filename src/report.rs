@@ -20,6 +20,7 @@ pub struct ItemOutcome {
 }
 
 impl ItemOutcome {
+    /// Build a [`ItemStatus::Done`] outcome with no note.
     pub(crate) fn done(id: impl Into<String>, label: impl Into<String>) -> Self {
         Self {
             id: id.into(),
@@ -28,6 +29,7 @@ impl ItemOutcome {
         }
     }
 
+    /// Build a [`ItemStatus::Done`] outcome carrying an informational note.
     pub(crate) fn done_with_note(
         id: impl Into<String>,
         label: impl Into<String>,
@@ -42,6 +44,7 @@ impl ItemOutcome {
         }
     }
 
+    /// Build a [`ItemStatus::Skipped`] outcome with the given reason.
     pub(crate) fn skipped(
         id: impl Into<String>,
         label: impl Into<String>,
@@ -56,6 +59,7 @@ impl ItemOutcome {
         }
     }
 
+    /// Whether this item completed successfully (regardless of any note).
     pub fn is_done(&self) -> bool {
         matches!(self.status, ItemStatus::Done { .. })
     }
@@ -72,14 +76,17 @@ pub struct SectionReport {
 }
 
 impl SectionReport {
+    /// Number of items that completed successfully.
     pub fn succeeded(&self) -> usize {
         self.outcomes.iter().filter(|o| o.is_done()).count()
     }
 
+    /// Number of items that were skipped.
     pub fn skipped(&self) -> usize {
         self.outcomes.len() - self.succeeded()
     }
 
+    /// Whether the section has no outcomes and no warnings.
     pub fn is_empty(&self) -> bool {
         self.outcomes.is_empty() && self.warnings.is_empty()
     }

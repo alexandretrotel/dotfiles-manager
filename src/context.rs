@@ -39,50 +39,62 @@ impl Dotfm {
         Self { root: root.into() }
     }
 
+    /// The dotfm data directory itself.
     pub fn root(&self) -> &Path {
         &self.root
     }
 
+    /// Directory holding all backup output.
     pub fn backup_dir(&self) -> PathBuf {
         self.root.join(BACKUP_DIR)
     }
 
+    /// Directory holding the profile-independent (`common`) backup layer.
     pub fn common_dir(&self) -> PathBuf {
         self.backup_dir().join(COMMON_DIR)
     }
 
+    /// Directory holding the `common` layer's encrypted files.
     pub fn encrypted_common_dir(&self) -> PathBuf {
         self.common_dir().join(ENCRYPTED_DIR)
     }
 
+    /// Directory holding `profile_name`'s backup layer.
     pub fn profile_dir(&self, profile_name: &str) -> PathBuf {
         self.backup_dir().join(PROFILES_DIR).join(profile_name)
     }
 
+    /// Directory holding `profile_name`'s encrypted files.
     pub fn encrypted_profile_dir(&self, profile_name: &str) -> PathBuf {
         self.profile_dir(profile_name).join(ENCRYPTED_DIR)
     }
 
+    /// Directory holding package-manager export files.
     pub fn packages_dir(&self) -> PathBuf {
         self.backup_dir().join(PACKAGES_DIR)
     }
 
+    /// Path to the config registry file.
     pub fn config_registry_path(&self) -> PathBuf {
         self.root.join("config.registry.json")
     }
 
+    /// Path to the package registry file.
     pub fn package_registry_path(&self) -> PathBuf {
         self.root.join("package.registry.json")
     }
 
+    /// Path to the encrypted-configs registry file.
     pub fn encrypted_registry_path(&self) -> PathBuf {
         self.root.join("encrypted.registry.json")
     }
 
+    /// Path to the profile configuration file.
     pub fn profiles_config_path(&self) -> PathBuf {
         self.root.join(PROFILE_CONFIG_FILE)
     }
 
+    /// Path to the file recording the active profile.
     pub fn active_profile_path(&self) -> PathBuf {
         self.root.join(ACTIVE_PROFILE_FILE)
     }

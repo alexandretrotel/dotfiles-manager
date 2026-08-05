@@ -8,6 +8,9 @@ use crate::error::{Error, Result, WrapErr};
 const KEYRING_SERVICE: &str = "dotfm";
 const KEYRING_USERNAME: &str = "encryption";
 
+/// Register the platform-native keychain backend as the default
+/// `keyring-core` store (macOS Keychain / Windows Credential Manager /
+/// Linux Secret Service).
 #[cfg(target_os = "macos")]
 fn init_default_keyring_store() -> Result<()> {
     set_default_store(apple_native_keyring_store::keychain::Store::new()?);
@@ -33,6 +36,8 @@ fn init_default_keyring_store() -> Result<()> {
     ))
 }
 
+/// The dotfm entry in the system keychain, initializing the default store
+/// on first call.
 fn keyring_entry() -> Result<Entry> {
     static INIT: OnceLock<Result<()>> = OnceLock::new();
     INIT.get_or_init(init_default_keyring_store)
