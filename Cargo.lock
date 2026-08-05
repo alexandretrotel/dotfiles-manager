@@ -786,6 +786,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tar",
+ "tempfile",
  "thiserror 2.0.19",
  "windows-native-keyring-store",
  "zbus-secret-service-keyring-store",
