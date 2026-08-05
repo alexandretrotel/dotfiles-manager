@@ -51,7 +51,14 @@ pub fn print_section(title: &str, section: &SectionReport) {
     }
 }
 
-pub fn print_section_summary(title: &str, section: &SectionReport) {
+/// Print a section's per-item lines followed by its succeeded/skipped
+/// summary.
+pub fn print_section_with_summary(title: &str, section: &SectionReport) {
+    print_section(title, section);
+    print_section_summary(title, section);
+}
+
+fn print_section_summary(title: &str, section: &SectionReport) {
     println!(
         "   {} completed: {} succeeded, {} skipped",
         title,
