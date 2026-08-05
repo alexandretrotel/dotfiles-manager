@@ -1,31 +1,35 @@
-mod cli;
-mod commands;
-mod encryption;
-mod errors;
-mod profiles;
-mod registry;
-mod utils;
+//! dotfm — dotfiles management with profiles.
+//!
+//! This crate is both a library and the `dotfm` CLI (behind the `cli`
+//! feature, enabled by default). The library performs no terminal I/O:
+//! operations take a [`Dotfm`] context plus plain arguments and return
+//! report structs describing what happened; rendering and prompting live in
+//! the binary.
+//!
+//! ```no_run
+//! use dotfm::{Dotfm, profiles::ActiveProfile};
+//!
+//! let ctx = Dotfm::new()?;
+//! let profile = ActiveProfile::resolve(&ctx, None);
+//! let report = dotfm::backup::run(&ctx, &profile, None)?;
+//! println!("{} configs backed up", report.configs.succeeded());
+//! # Ok::<(), dotfm::Error>(())
+//! ```
 
-use clap::{CommandFactory, Parser};
-use cli::{Cli, Commands};
-use commands::{backup, doctor, git, profile, restore, secret, sync, r#use};
+pub mod backup;
+mod context;
+pub mod doctor;
+pub mod encryption;
+mod error;
+pub mod git;
+pub mod keyring;
+pub mod profiles;
+pub mod registry;
+mod report;
+pub mod restore;
+pub mod sync;
+mod util;
 
-pub fn run() -> color_eyre::eyre::Result<()> {
-    let cli = Cli::parse();
-
-    match cli.command {
-        Some(Commands::Backup(args)) => backup::run(args),
-        Some(Commands::Restore(args)) => restore::run(args),
-        Some(Commands::Use(args)) => r#use::run(args),
-        Some(Commands::Profile(args)) => profile::run(args),
-        Some(Commands::Git(args)) => git::run(args),
-        Some(Commands::Sync(args)) => sync::run(args),
-        Some(Commands::Doctor(args)) => doctor::run(args),
-        Some(Commands::Secret { action }) => secret::run(action),
-        None => {
-            Cli::command().print_help()?;
-            println!();
-            Ok(())
-        }
-    }
-}
+pub use context::{Dotfm, ENCRYPTED_BUNDLE_FILE, PROFILE_CONFIG_FILE};
+pub use error::{Error, Result};
+pub use report::{ItemOutcome, ItemStatus, SectionReport};
