@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use std::fs;
 use std::io::Read;
-use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::path::Path;
+
+use tempfile::NamedTempFile;
 
 use crate::error::{Result, WrapErr};
 
@@ -72,28 +73,10 @@ pub fn set_private_file_permissions(path: &Path) -> Result<()> {
     Ok(())
 }
 
-/// Create a unique empty temp file and return its path.
-pub fn create_temp_path(label: &str) -> std::io::Result<PathBuf> {
-    let dir = std::env::temp_dir();
-    let pid = std::process::id();
-    let base = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-
-    for attempt in 0..10 {
-        let name = format!("dotfm-{label}-{pid}-{base}-{attempt}");
-        let path = dir.join(name);
-        match fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&path)
-        {
-            Ok(_) => return Ok(path),
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(e) => return Err(e),
-        }
-    }
-
-    Err(std::io::Error::other("Failed to create temporary file"))
+/// Create a unique temp file that is removed when the returned handle is
+/// dropped.
+pub fn create_temp_file(label: &str) -> std::io::Result<NamedTempFile> {
+    tempfile::Builder::new()
+        .prefix(&format!("dotfm-{label}-"))
+        .tempfile()
 }

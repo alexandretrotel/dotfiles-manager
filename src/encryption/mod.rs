@@ -6,7 +6,7 @@ use std::path::Path;
 
 use age::secrecy::SecretString;
 pub use bundle::{
-    create_temp_path, load_tar_member_map, set_private_file_permissions, write_entries_tar,
+    create_temp_file, load_tar_member_map, set_private_file_permissions, write_entries_tar,
 };
 
 use crate::error::{Result, WrapErr};
