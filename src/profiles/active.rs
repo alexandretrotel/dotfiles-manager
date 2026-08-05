@@ -59,7 +59,7 @@ impl ActiveProfile {
 }
 
 pub(crate) fn get_active_profile_name() -> Option<String> {
-    if let Ok(profile) = std::env::var("MNTN_PROFILE") {
+    if let Ok(profile) = std::env::var("DOTFM_PROFILE") {
         let trimmed = profile.trim();
         if !trimmed.is_empty() {
             return Some(trimmed.to_string());

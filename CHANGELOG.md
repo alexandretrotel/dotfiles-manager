@@ -9,6 +9,7 @@ All notable changes to this project are documented in this file.
 - **Breaking:** The data directory moved from `~/.mntn` to `~/.dotfm`. Existing users must move it manually: `mv ~/.mntn ~/.dotfm`.
 - **Breaking:** The encrypted bundle filename changed from `mntn-encrypted-bundle.age` to `dotfm-encrypted-bundle.age`. Rename the file inside your backup directory before running `dotfm restore`.
 - **Breaking:** The system keychain service name changed from `mntn` to `dotfm`. Re-save your encryption password with `dotfm secret set`.
+- **Breaking:** The profile override environment variable was renamed from `MNTN_PROFILE` to `DOTFM_PROFILE`.
 
 ## v4.0.6
 
