@@ -22,7 +22,6 @@ pub mod doctor;
 pub mod encryption;
 mod error;
 pub mod git;
-pub mod keyring;
 pub mod profiles;
 pub mod registry;
 mod report;

@@ -1,4 +1,5 @@
 mod bundle;
+pub mod keyring;
 
 use std::fs;
 use std::io::{Read, Write};

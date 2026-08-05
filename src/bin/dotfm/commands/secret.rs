@@ -10,11 +10,11 @@ pub fn run(action: SecretActions) -> Result<()> {
         SecretActions::Set => {
             let password = prompt::prompt_password(true)
                 .wrap_err("Read encryption password for system keychain")?;
-            dotfm::keyring::set_stored_password(&password).map_err(with_suggestions)?;
+            dotfm::encryption::keyring::set_stored_password(&password).map_err(with_suggestions)?;
             println!("{}", green("Secret set complete"));
         }
         SecretActions::Delete => {
-            dotfm::keyring::clear_stored_password().map_err(with_suggestions)?;
+            dotfm::encryption::keyring::clear_stored_password().map_err(with_suggestions)?;
             println!("{}", green("Secret delete complete"));
         }
     }
