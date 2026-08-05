@@ -56,7 +56,7 @@ pub enum Error {
     NoHomeDir,
 
     /// An error with an attached human-readable context message, preserving
-    /// the original error as its source (see [`WrapErr`]).
+    /// the original error as its source (see `WrapErr`).
     #[error("{msg}")]
     Context {
         msg: String,
