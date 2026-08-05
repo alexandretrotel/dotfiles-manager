@@ -70,8 +70,3 @@ pub fn decrypt_file(source: &Path, dest: &Path, password: &SecretString) -> Resu
 
     Ok(())
 }
-
-/// Path of the per-file encrypted backup for a source path.
-pub fn get_encrypted_path(source_path: &str) -> String {
-    format!("{}.age", source_path)
-}

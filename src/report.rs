@@ -70,8 +70,7 @@ impl ItemOutcome {
 pub struct SectionReport {
     pub outcomes: Vec<ItemOutcome>,
     /// Non-fatal warnings that apply to the section as a whole (e.g. an
-    /// encrypted bundle that could not be decrypted before falling back to
-    /// per-file backups).
+    /// encrypted bundle that could not be decrypted).
     pub warnings: Vec<String>,
 }
 
