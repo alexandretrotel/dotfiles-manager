@@ -60,7 +60,7 @@ pub fn print_section_summary(title: &str, section: &SectionReport) {
     );
 }
 
-pub fn print_validation_report(report: &DoctorReport) {
+pub fn print_doctor_report(report: &DoctorReport) {
     for (name, errors) in report.results() {
         if errors.is_empty() {
             println!(" {} OK", name);
@@ -81,7 +81,7 @@ pub fn print_validation_report(report: &DoctorReport) {
     }
 }
 
-pub fn print_fix_report(report: &DoctorFixReport) {
+pub fn print_doctor_fix_report(report: &DoctorFixReport) {
     for entry in &report.entries {
         match &entry.outcome {
             DoctorFixOutcome::Unchanged => {}
