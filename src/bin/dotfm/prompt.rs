@@ -38,3 +38,19 @@ pub fn resolve_password(ask_password: bool, confirm_on_prompt: bool) -> Result<S
     }
     Ok(password)
 }
+
+/// Resolve the password for an optional encrypted step. Returns `None` when
+/// the step is skipped, or when resolution fails — after printing a
+/// "Skipping <step>" notice.
+pub fn optional_password(skip: bool, ask_password: bool, step: &str) -> Option<SecretString> {
+    if skip {
+        return None;
+    }
+    match resolve_password(ask_password, false) {
+        Ok(password) => Some(password),
+        Err(e) => {
+            eprintln!("Skipping {}: {}", step, e);
+            None
+        }
+    }
+}
