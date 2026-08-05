@@ -87,21 +87,3 @@ impl Dotfm {
         self.root.join(ACTIVE_PROFILE_FILE)
     }
 }
-
-pub(crate) fn get_xdg_or_default_config_path(relative_path: &str) -> PathBuf {
-    if let Some(xdg_config) = xdg_config_home_dir() {
-        return xdg_config.join(relative_path);
-    }
-    BaseDirs::new()
-        .unwrap()
-        .home_dir()
-        .join(".config")
-        .join(relative_path)
-}
-
-fn xdg_config_home_dir() -> Option<PathBuf> {
-    match std::env::var_os("XDG_CONFIG_HOME") {
-        Some(value) if !value.is_empty() => Some(PathBuf::from(value)),
-        _ => None,
-    }
-}
