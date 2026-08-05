@@ -23,7 +23,7 @@ pub fn red(text: &str) -> String {
 }
 
 /// Print a backup/restore section: warnings first, then one line per item.
-pub fn print_section(title: &str, section: &SectionReport) {
+fn print_section(title: &str, section: &SectionReport) {
     println!("   {}: {} entries", title, section.outcomes.len());
 
     for warning in &section.warnings {
