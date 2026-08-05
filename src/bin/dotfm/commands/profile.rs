@@ -5,6 +5,7 @@ use dotfm::profiles::{self, ProfileConfig};
 use super::with_suggestions;
 use crate::cli::{ProfileActions, ProfileArgs};
 
+/// Handle `dotfm profile` (list/create/delete).
 pub fn run(ctx: &Dotfm, args: ProfileArgs) -> Result<()> {
     match args.action {
         Some(ProfileActions::List) => list(ctx),
@@ -43,6 +44,7 @@ pub fn run(ctx: &Dotfm, args: ProfileArgs) -> Result<()> {
     }
 }
 
+/// Print all known profiles, marking the active one.
 fn list(ctx: &Dotfm) -> Result<()> {
     let config = ProfileConfig::load_or_default(ctx);
     let profiles_list = config.list_profiles();

@@ -35,6 +35,7 @@ pub fn run(ctx: &Dotfm, message: Option<&str>) -> Result<SyncReport> {
     Ok(SyncReport { committed })
 }
 
+/// The given message if non-empty, else a timestamped default.
 fn commit_message(message: Option<&str>) -> String {
     match message.map(str::trim).filter(|msg| !msg.is_empty()) {
         Some(msg) => msg.to_string(),
@@ -45,6 +46,7 @@ fn commit_message(message: Option<&str>) -> String {
     }
 }
 
+/// Whether `git diff --cached` has anything to report.
 fn has_staged_changes(repo: &Path) -> Result<bool> {
     let status = Command::new("git")
         .args(["diff", "--cached", "--quiet"])

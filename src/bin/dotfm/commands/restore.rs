@@ -7,6 +7,7 @@ use crate::cli::RestoreArgs;
 use crate::output::{green, print_section_with_summary};
 use crate::prompt;
 
+/// Handle `dotfm restore`.
 pub fn run(ctx: &Dotfm, args: RestoreArgs) -> Result<()> {
     let profile = ActiveProfile::resolve(ctx, None);
 

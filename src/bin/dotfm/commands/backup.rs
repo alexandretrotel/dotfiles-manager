@@ -8,6 +8,7 @@ use crate::cli::BackupArgs;
 use crate::output::{green, print_section_with_summary};
 use crate::prompt;
 
+/// Handle `dotfm backup`.
 pub fn run(ctx: &Dotfm, args: BackupArgs) -> Result<()> {
     let profile = ActiveProfile::resolve(ctx, args.profile.as_deref());
     let password = resolve_backup_password(args.skip_encrypted, args.ask_password)?;
@@ -33,6 +34,7 @@ pub fn run(ctx: &Dotfm, args: BackupArgs) -> Result<()> {
     Ok(())
 }
 
+/// Prompt for the encryption password unless `--skip-encrypted` was passed.
 fn resolve_backup_password(
     skip_encrypted: bool,
     ask_password: bool,

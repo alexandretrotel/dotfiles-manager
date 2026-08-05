@@ -7,6 +7,7 @@ use crate::cli::{DoctorActions, DoctorArgs};
 use crate::output::{green, print_doctor_fix_report, print_doctor_report, red};
 use crate::prompt;
 
+/// Handle `dotfm doctor` (and `doctor fix`).
 pub fn run(ctx: &Dotfm, args: DoctorArgs) -> Result<()> {
     if let Ok(true) = ProfileConfig::save_default_if_missing(ctx) {
         println!(
@@ -23,6 +24,7 @@ pub fn run(ctx: &Dotfm, args: DoctorArgs) -> Result<()> {
     }
 }
 
+/// Handle `dotfm doctor fix`.
 fn fix(ctx: &Dotfm, profile: &ActiveProfile) -> Result<()> {
     println!("Reformatting JSON configs...");
     println!("   Profile: {}", profile);
@@ -49,6 +51,7 @@ fn fix(ctx: &Dotfm, profile: &ActiveProfile) -> Result<()> {
     Ok(())
 }
 
+/// Handle `dotfm doctor` (validation, the default action).
 fn validate(
     ctx: &Dotfm,
     profile: &ActiveProfile,

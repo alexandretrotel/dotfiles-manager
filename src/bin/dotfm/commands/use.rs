@@ -5,6 +5,7 @@ use dotfm::profiles::{SwitchProfileOutcome, switch_profile};
 use super::with_suggestions;
 use crate::cli::UseArgs;
 
+/// Handle `dotfm use <profile>`.
 pub fn run(ctx: &Dotfm, args: UseArgs) -> Result<()> {
     match switch_profile(ctx, &args.profile).map_err(with_suggestions)? {
         SwitchProfileOutcome::Cleared => {

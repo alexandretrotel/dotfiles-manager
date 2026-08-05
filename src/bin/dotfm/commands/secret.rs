@@ -5,6 +5,7 @@ use crate::cli::SecretActions;
 use crate::output::green;
 use crate::prompt;
 
+/// Handle `dotfm secret` (set/delete the stored encryption password).
 pub fn run(action: SecretActions) -> Result<()> {
     match action {
         SecretActions::Set => {

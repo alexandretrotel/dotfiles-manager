@@ -9,6 +9,7 @@ use dotfm::Dotfm;
 
 use crate::cli::{Cli, Command};
 
+/// Parse CLI args and dispatch to the matching command handler.
 fn main() -> Result<()> {
     color_eyre::install()?;
 

@@ -6,18 +6,22 @@ const COLOR_YELLOW: &str = "\x1b[33m";
 const COLOR_RED: &str = "\x1b[31m";
 const COLOR_RESET: &str = "\x1b[0m";
 
+/// Wrap `text` in the given ANSI color code, resetting after it.
 fn color(text: &str, code: &str) -> String {
     format!("{code}{text}{COLOR_RESET}")
 }
 
+/// Wrap `text` in green (success).
 pub fn green(text: &str) -> String {
     color(text, COLOR_GREEN)
 }
 
+/// Wrap `text` in yellow (warning).
 pub fn yellow(text: &str) -> String {
     color(text, COLOR_YELLOW)
 }
 
+/// Wrap `text` in red (error).
 pub fn red(text: &str) -> String {
     color(text, COLOR_RED)
 }
@@ -58,6 +62,7 @@ pub fn print_section_with_summary(title: &str, section: &SectionReport) {
     print_section_summary(title, section);
 }
 
+/// Print a section's succeeded/skipped counts.
 fn print_section_summary(title: &str, section: &SectionReport) {
     println!(
         "   {} completed: {} succeeded, {} skipped",
@@ -67,6 +72,7 @@ fn print_section_summary(title: &str, section: &SectionReport) {
     );
 }
 
+/// Print every validator's findings, grouped and severity-colored.
 pub fn print_doctor_report(report: &DoctorReport) {
     for (name, errors) in report.results() {
         if errors.is_empty() {
@@ -88,6 +94,8 @@ pub fn print_doctor_report(report: &DoctorReport) {
     }
 }
 
+/// Print each fixed file's outcome, then a reformatted/unchanged/unfixable
+/// summary line.
 pub fn print_doctor_fix_report(report: &DoctorFixReport) {
     for entry in &report.entries {
         match &entry.outcome {

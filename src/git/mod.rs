@@ -23,6 +23,8 @@ pub fn passthrough(ctx: &Dotfm, args: &[String]) -> Result<()> {
     run_cmd_passthrough("git", &args_ref, Some(ctx.root()))
 }
 
+/// Run `cmd` with inherited stdio (output streams directly to the
+/// terminal), returning an error on non-zero exit.
 pub(crate) fn run_cmd_passthrough(cmd: &str, args: &[&str], dir: Option<&Path>) -> Result<()> {
     let mut command = Command::new(cmd);
     command
@@ -79,6 +81,8 @@ pub fn init_repo_if_missing(ctx: &Dotfm) -> Result<InitReport> {
     })
 }
 
+/// Write a default `.gitignore` under `root` if none exists. Returns
+/// whether a file was created.
 fn ensure_gitignore_exists(root: &Path) -> Result<bool> {
     let gitignore_path = root.join(".gitignore");
     if gitignore_path.exists() {
