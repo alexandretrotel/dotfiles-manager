@@ -1,7 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use directories_next::BaseDirs;
-
 use crate::error::{Error, Result};
 
 pub(crate) const BACKUP_DIR: &str = "backup";
@@ -28,9 +26,9 @@ pub struct Dotfm {
 impl Dotfm {
     /// Open the default root at `~/.dotfm`.
     pub fn new() -> Result<Self> {
-        let base_dirs = BaseDirs::new().ok_or(Error::NoHomeDir)?;
+        let home_dir = dirs::home_dir().ok_or(Error::NoHomeDir)?;
         Ok(Self {
-            root: base_dirs.home_dir().join(".dotfm"),
+            root: home_dir.join(".dotfm"),
         })
     }
 

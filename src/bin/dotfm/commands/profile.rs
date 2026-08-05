@@ -1,3 +1,4 @@
+use anstream::println;
 use color_eyre::eyre::Result;
 use dotfm::Dotfm;
 use dotfm::profiles::{self, ProfileConfig};

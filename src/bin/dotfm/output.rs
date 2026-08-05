@@ -1,29 +1,32 @@
+use anstream::{eprintln, println};
+use anstyle::{AnsiColor, Style};
 use dotfm::doctor::{DoctorFixOutcome, DoctorFixReport, DoctorReport, Severity};
 use dotfm::{ItemStatus, SectionReport};
 
-const COLOR_GREEN: &str = "\x1b[32m";
-const COLOR_YELLOW: &str = "\x1b[33m";
-const COLOR_RED: &str = "\x1b[31m";
-const COLOR_RESET: &str = "\x1b[0m";
+const GREEN: Style = AnsiColor::Green.on_default();
+const YELLOW: Style = AnsiColor::Yellow.on_default();
+const RED: Style = AnsiColor::Red.on_default();
 
-/// Wrap `text` in the given ANSI color code, resetting after it.
-fn color(text: &str, code: &str) -> String {
-    format!("{code}{text}{COLOR_RESET}")
+/// Wrap `text` in the given style, resetting after it. Rendered through
+/// `anstream`, so the escape codes degrade gracefully on non-color
+/// terminals, `NO_COLOR`, and legacy Windows consoles.
+fn color(text: &str, style: Style) -> String {
+    format!("{style}{text}{style:#}")
 }
 
 /// Wrap `text` in green (success).
 pub fn green(text: &str) -> String {
-    color(text, COLOR_GREEN)
+    color(text, GREEN)
 }
 
 /// Wrap `text` in yellow (warning).
 pub fn yellow(text: &str) -> String {
-    color(text, COLOR_YELLOW)
+    color(text, YELLOW)
 }
 
 /// Wrap `text` in red (error).
 pub fn red(text: &str) -> String {
-    color(text, COLOR_RED)
+    color(text, RED)
 }
 
 /// Print a backup/restore section: warnings first, then one line per item.

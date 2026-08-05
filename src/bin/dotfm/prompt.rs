@@ -1,4 +1,5 @@
 use age::secrecy::SecretString;
+use anstream::eprintln;
 use color_eyre::eyre::{Result, WrapErr, bail};
 
 /// Read the encryption password from the terminal, optionally with a

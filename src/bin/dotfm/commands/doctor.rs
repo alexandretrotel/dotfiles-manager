@@ -1,3 +1,4 @@
+use anstream::{eprintln, println};
 use color_eyre::eyre::{Result, WrapErr, eyre};
 use dotfm::Dotfm;
 use dotfm::profiles::{ActiveProfile, ProfileConfig};

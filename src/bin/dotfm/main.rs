@@ -3,6 +3,7 @@ mod commands;
 mod output;
 mod prompt;
 
+use anstream::println;
 use clap::{CommandFactory, Parser};
 use color_eyre::eyre::Result;
 use dotfm::Dotfm;
