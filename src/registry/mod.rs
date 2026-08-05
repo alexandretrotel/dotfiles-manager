@@ -1,11 +1,8 @@
 //! JSON-backed registries describing what dotfm backs up: plain configs,
 //! package-manager exports, and encrypted files.
 
-/// The plain-config registry (`config.registry.json`).
 pub mod config;
-/// The encrypted-files registry (`encrypted.registry.json`).
 pub mod encrypted;
-/// The package-manager-export registry (`package.registry.json`).
 pub mod package;
 
 use std::path::Path;
