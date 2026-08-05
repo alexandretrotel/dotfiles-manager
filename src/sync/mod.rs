@@ -6,7 +6,7 @@ use chrono::Utc;
 use crate::context::Dotfm;
 use crate::error::{Error, Result, WrapErr};
 use crate::git;
-use crate::utils::system::run_cmd;
+use crate::utils::process::run_cmd;
 
 /// What a sync run did.
 #[derive(Debug, Clone)]
