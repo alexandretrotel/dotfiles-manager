@@ -5,20 +5,27 @@ use serde::{Deserialize, Serialize};
 
 use crate::registry::Registry;
 
+/// A single sensitive file, backed up age-encrypted rather than plaintext.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EncryptedRegistryEntry {
     pub name: String,
     pub description: Option<String>,
     pub enabled: bool,
+    /// Path relative to a backup layer's encrypted directory, and the
+    /// archive member name inside the encrypted bundle.
     pub source_path: String,
+    /// Absolute path on disk this entry is backed up from / restored to.
     pub target_path: PathBuf,
 }
 
 crate::impl_registry_entry_like!(EncryptedRegistryEntry);
 
+/// Registry of sensitive files to back up encrypted, stored at
+/// `encrypted.registry.json`.
 pub type EncryptedRegistry = Registry<EncryptedRegistryEntry>;
 
 impl Default for EncryptedRegistry {
+    /// Built-in entry for `~/.ssh/config`.
     fn default() -> Self {
         let mut entries = HashMap::new();
 

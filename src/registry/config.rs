@@ -5,20 +5,26 @@ use serde::{Deserialize, Serialize};
 
 use crate::registry::Registry;
 
+/// A single plain-config file or directory to back up and restore.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigRegistryEntry {
     pub name: String,
     pub description: Option<String>,
     pub enabled: bool,
+    /// Path relative to a backup layer directory (e.g. `.bashrc`).
     pub source_path: String,
+    /// Absolute path on disk this entry is backed up from / restored to.
     pub target_path: PathBuf,
 }
 
 crate::impl_registry_entry_like!(ConfigRegistryEntry);
 
+/// Registry of plain config files/directories, stored at
+/// `config.registry.json`.
 pub type ConfigRegistry = Registry<ConfigRegistryEntry>;
 
 impl Default for ConfigRegistry {
+    /// Built-in entries for common shell configs (`.bashrc`, `.zshrc`).
     fn default() -> Self {
         let mut entries = HashMap::new();
 

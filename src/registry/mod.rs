@@ -1,5 +1,11 @@
+//! JSON-backed registries describing what dotfm backs up: plain configs,
+//! package-manager exports, and encrypted files.
+
+/// The plain-config registry (`config.registry.json`).
 pub mod config;
+/// The encrypted-files registry (`encrypted.registry.json`).
 pub mod encrypted;
+/// The package-manager-export registry (`package.registry.json`).
 pub mod package;
 
 use std::path::Path;
@@ -15,9 +21,11 @@ use crate::error::Result;
 /// Implemented by registry entry types so [`Registry`] can filter on the
 /// shared `enabled` flag.
 pub trait RegistryEntryLike {
+    /// Whether this entry should be processed during backup/restore/validate.
     fn is_enabled(&self) -> bool;
 }
 
+/// Implements [`RegistryEntryLike`] for a type with an `enabled: bool` field.
 #[macro_export]
 macro_rules! impl_registry_entry_like {
     ($t:ty) => {
@@ -57,6 +65,8 @@ where
         }
     }
 
+    /// Write the registry to `path` as pretty-printed JSON, sorted by entry
+    /// id for a stable diff.
     pub fn save(&self, path: &Path) -> Result<()> {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
@@ -73,6 +83,7 @@ where
         Ok(())
     }
 
+    /// Entries with `enabled: true`, keyed by id.
     pub fn get_enabled_entries(&self) -> impl Iterator<Item = (&String, &T)> {
         self.entries.iter().filter(|(_, e)| e.is_enabled())
     }
