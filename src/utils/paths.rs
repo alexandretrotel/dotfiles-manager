@@ -4,20 +4,20 @@ use std::path::PathBuf;
 pub(crate) const BACKUP_DIR: &str = "backup";
 pub(crate) const COMMON_DIR: &str = "common";
 pub(crate) const ENCRYPTED_DIR: &str = "encrypted";
-pub(crate) const ENCRYPTED_BUNDLE_FILE: &str = "mntn-encrypted-bundle.age";
+pub(crate) const ENCRYPTED_BUNDLE_FILE: &str = "dotfm-encrypted-bundle.age";
 
 pub(crate) const PROFILES_DIR: &str = "profiles";
 pub(crate) const PROFILE_CONFIG_FILE: &str = "profiles.json";
 pub(crate) const ACTIVE_PROFILE_FILE: &str = ".active-profile";
 
-pub(crate) fn get_mntn_dir() -> PathBuf {
+pub(crate) fn get_dotfm_dir() -> PathBuf {
     let base_dirs = BaseDirs::new().unwrap();
     let home_dir = base_dirs.home_dir();
-    home_dir.join(".mntn")
+    home_dir.join(".dotfm")
 }
 
 pub(crate) fn get_backup_path() -> PathBuf {
-    get_mntn_dir().join(BACKUP_DIR)
+    get_dotfm_dir().join(BACKUP_DIR)
 }
 
 pub(crate) fn get_common_path() -> PathBuf {
@@ -37,15 +37,15 @@ pub(crate) fn get_encrypted_profiles_path(profile_name: &str) -> PathBuf {
 }
 
 pub(crate) fn get_config_registry_path() -> PathBuf {
-    get_mntn_dir().join("config.registry.json")
+    get_dotfm_dir().join("config.registry.json")
 }
 
 pub(crate) fn get_package_registry_path() -> PathBuf {
-    get_mntn_dir().join("package.registry.json")
+    get_dotfm_dir().join("package.registry.json")
 }
 
 pub(crate) fn get_encrypted_registry_path() -> PathBuf {
-    get_mntn_dir().join("encrypted.registry.json")
+    get_dotfm_dir().join("encrypted.registry.json")
 }
 
 pub(crate) fn get_packages_path() -> PathBuf {
@@ -53,11 +53,11 @@ pub(crate) fn get_packages_path() -> PathBuf {
 }
 
 pub(crate) fn get_profiles_config_path() -> PathBuf {
-    get_mntn_dir().join(PROFILE_CONFIG_FILE)
+    get_dotfm_dir().join(PROFILE_CONFIG_FILE)
 }
 
 pub(crate) fn get_active_profile_path() -> PathBuf {
-    get_mntn_dir().join(ACTIVE_PROFILE_FILE)
+    get_dotfm_dir().join(ACTIVE_PROFILE_FILE)
 }
 
 pub(crate) fn get_xdg_or_default_config_path(relative_path: &str) -> PathBuf {

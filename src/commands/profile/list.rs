@@ -9,7 +9,7 @@ pub(crate) fn list_profiles() -> Result<()> {
     if profiles.is_empty() {
         println!("No profiles configured");
         println!();
-        println!("Create a profile with: mntn profile create <name>");
+        println!("Create a profile with: dotfm profile create <name>");
         return Ok(());
     }
 

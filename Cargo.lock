@@ -706,6 +706,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "dotfm"
+version = "5.0.0"
+dependencies = [
+ "age",
+ "apple-native-keyring-store",
+ "chrono",
+ "clap",
+ "color-eyre",
+ "directories-next",
+ "keyring-core",
+ "rpassword",
+ "serde",
+ "serde_json",
+ "tar",
+ "thiserror 2.0.19",
+ "windows-native-keyring-store",
+ "zbus-secret-service-keyring-store",
+]
+
+[[package]]
 name = "endi"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1319,26 +1339,6 @@ dependencies = [
  "libc",
  "wasi",
  "windows-sys 0.61.2",
-]
-
-[[package]]
-name = "mntn"
-version = "4.0.6"
-dependencies = [
- "age",
- "apple-native-keyring-store",
- "chrono",
- "clap",
- "color-eyre",
- "directories-next",
- "keyring-core",
- "rpassword",
- "serde",
- "serde_json",
- "tar",
- "thiserror 2.0.19",
- "windows-native-keyring-store",
- "zbus-secret-service-keyring-store",
 ]
 
 [[package]]

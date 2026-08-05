@@ -74,7 +74,7 @@ impl Command for ProfileShowTask {
         println!();
         list::list_profiles()?;
         println!();
-        println!("Use 'mntn use <profile>' to switch profiles");
+        println!("Use 'dotfm use <profile>' to switch profiles");
         Ok(())
     }
 }

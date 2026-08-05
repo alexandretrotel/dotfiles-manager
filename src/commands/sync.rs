@@ -2,7 +2,7 @@ use crate::cli::SyncArgs;
 use crate::commands::core::{Command, CommandExecutor};
 use crate::commands::git::run_cmd_passthrough;
 use crate::utils::display::yellow;
-use crate::utils::paths::get_mntn_dir;
+use crate::utils::paths::get_dotfm_dir;
 use crate::utils::system::run_cmd;
 use chrono::Utc;
 use color_eyre::eyre::{Result, WrapErr, bail};
@@ -28,7 +28,7 @@ impl SyncTask {
             Some(msg) => Ok(msg.to_string()),
             None => {
                 let stamp = Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-                Ok(format!("chore: sync mntn ({stamp})"))
+                Ok(format!("chore: sync dotfm ({stamp})"))
             }
         }
     }
@@ -55,7 +55,7 @@ impl Command for SyncTask {
     }
 
     fn execute(&mut self) -> color_eyre::eyre::Result<()> {
-        let repo_dir = get_mntn_dir();
+        let repo_dir = get_dotfm_dir();
         crate::commands::git::ensure_git_repo(&repo_dir)?;
 
         run_cmd("git", &["add", "."], Some(&repo_dir))?;

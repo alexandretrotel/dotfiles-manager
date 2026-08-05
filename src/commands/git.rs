@@ -1,6 +1,6 @@
 use crate::cli::GitArgs;
 use crate::commands::core::{Command, CommandExecutor};
-use crate::utils::paths::get_mntn_dir;
+use crate::utils::paths::get_dotfm_dir;
 use crate::utils::system::run_cmd;
 use color_eyre::Help;
 use color_eyre::eyre::Result;
@@ -35,10 +35,10 @@ pub(crate) fn run(args: GitArgs) -> color_eyre::eyre::Result<()> {
 }
 
 fn run_git_passthrough(args: Vec<String>) -> Result<()> {
-    let mntn_dir = get_mntn_dir();
-    ensure_git_repo(&mntn_dir)?;
+    let dotfm_dir = get_dotfm_dir();
+    ensure_git_repo(&dotfm_dir)?;
     let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    run_cmd_passthrough("git", &args_ref, Some(&mntn_dir))?;
+    run_cmd_passthrough("git", &args_ref, Some(&dotfm_dir))?;
     Ok(())
 }
 
@@ -62,34 +62,34 @@ pub(crate) fn run_cmd_passthrough(cmd: &str, args: &[&str], dir: Option<&Path>) 
     Ok(())
 }
 
-pub(crate) fn ensure_git_repo(mntn_dir: &Path) -> Result<()> {
-    if !mntn_dir.join(".git").exists() {
-        return Err(eyre!("No git repository found in ~/.mntn"))
-            .suggestion("Run 'mntn backup' to initialize it.");
+pub(crate) fn ensure_git_repo(dotfm_dir: &Path) -> Result<()> {
+    if !dotfm_dir.join(".git").exists() {
+        return Err(eyre!("No git repository found in ~/.dotfm"))
+            .suggestion("Run 'dotfm backup' to initialize it.");
     }
 
-    ensure_gitignore_exists(mntn_dir)?;
+    ensure_gitignore_exists(dotfm_dir)?;
     Ok(())
 }
 
-pub(crate) fn init_repo_if_missing(mntn_dir: &Path) -> Result<()> {
-    if mntn_dir.join(".git").exists() {
-        ensure_gitignore_exists(mntn_dir)?;
+pub(crate) fn init_repo_if_missing(dotfm_dir: &Path) -> Result<()> {
+    if dotfm_dir.join(".git").exists() {
+        ensure_gitignore_exists(dotfm_dir)?;
         return Ok(());
     }
 
-    println!("Initializing git repository in {}", mntn_dir.display());
-    run_cmd("git", &["init"], Some(mntn_dir))?;
-    run_cmd("git", &["branch", "-M", "main"], Some(mntn_dir))?;
+    println!("Initializing git repository in {}", dotfm_dir.display());
+    run_cmd("git", &["init"], Some(dotfm_dir))?;
+    run_cmd("git", &["branch", "-M", "main"], Some(dotfm_dir))?;
     println!("Git repository initialized");
-    ensure_gitignore_exists(mntn_dir)?;
+    ensure_gitignore_exists(dotfm_dir)?;
     Ok(())
 }
 
-fn ensure_gitignore_exists(mntn_dir: &Path) -> Result<()> {
-    let gitignore_path = mntn_dir.join(".gitignore");
+fn ensure_gitignore_exists(dotfm_dir: &Path) -> Result<()> {
+    let gitignore_path = dotfm_dir.join(".gitignore");
     if !gitignore_path.exists() {
-        let default_gitignore = "# mntn
+        let default_gitignore = "# dotfm
 .active-profile
 
 # log files

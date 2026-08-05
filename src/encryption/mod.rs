@@ -9,7 +9,7 @@ use std::io::{Read, Write};
 use std::path::Path;
 use std::sync::OnceLock;
 
-const KEYRING_SERVICE: &str = "mntn";
+const KEYRING_SERVICE: &str = "dotfm";
 const KEYRING_USERNAME: &str = "encryption";
 
 #[cfg(target_os = "macos")]
@@ -105,7 +105,7 @@ pub(crate) fn resolve_encryption_password(
     let password = prompt_password(confirm_on_prompt)?;
     if !had_stored {
         eprintln!(
-            "Tip: run `mntn secret set` to save this password in your system keychain and skip prompts later."
+            "Tip: run `dotfm secret set` to save this password in your system keychain and skip prompts later."
         );
     }
     Ok(password)

@@ -4,7 +4,7 @@ use crate::profiles::ActiveProfile;
 
 #[derive(Parser)]
 #[command(
-    name = "mntn",
+    name = "dotfm",
     version = env!("CARGO_PKG_VERSION"),
     about = "A Rust-based command-line tool for dotfiles management with profiles."
 )]
@@ -27,10 +27,10 @@ pub(crate) enum Commands {
     #[command(about = "Manage profiles (list, create, delete)")]
     Profile(ProfileArgs),
 
-    #[command(about = "Run git commands in the mntn repository")]
+    #[command(about = "Run git commands in the dotfm repository")]
     Git(GitArgs),
 
-    #[command(about = "Stage, commit, and push to the mntn repository")]
+    #[command(about = "Stage, commit, and push to the dotfm repository")]
     Sync(SyncArgs),
 
     #[command(
@@ -149,7 +149,7 @@ pub(crate) struct SyncArgs {
     #[arg(
         long,
         short = 'm',
-        help = "Custom commit message; defaults to chore: sync mntn (<UTC date time>) when omitted"
+        help = "Custom commit message; defaults to chore: sync dotfm (<UTC date time>) when omitted"
     )]
     pub message: Option<String>,
 }

@@ -1,6 +1,6 @@
 use crate::commands::core::Command;
 use crate::profiles::ActiveProfile;
-use crate::utils::paths::get_mntn_dir;
+use crate::utils::paths::get_dotfm_dir;
 use std::fs;
 
 mod config;
@@ -30,8 +30,8 @@ impl Command for BackupTask {
     }
 
     fn execute(&mut self) -> color_eyre::eyre::Result<()> {
-        let mntn_dir = get_mntn_dir();
-        crate::commands::git::init_repo_if_missing(&mntn_dir)?;
+        let dotfm_dir = get_dotfm_dir();
+        crate::commands::git::init_repo_if_missing(&dotfm_dir)?;
 
         let backup_path = self.profile.get_backup_path();
         fs::create_dir_all(&backup_path)?;

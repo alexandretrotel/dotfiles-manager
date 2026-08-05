@@ -75,7 +75,7 @@ pub(crate) fn create_temp_path(label: &str) -> std::io::Result<PathBuf> {
         .as_nanos();
 
     for attempt in 0..10 {
-        let name = format!("mntn-{label}-{pid}-{base}-{attempt}");
+        let name = format!("dotfm-{label}-{pid}-{base}-{attempt}");
         let path = dir.join(name);
         match fs::OpenOptions::new()
             .write(true)

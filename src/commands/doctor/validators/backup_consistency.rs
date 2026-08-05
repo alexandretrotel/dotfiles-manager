@@ -88,7 +88,7 @@ impl Validator for BackupConsistencyValidator {
                             "{} ({}): File differs from backup",
                             entry.name, id
                         ))
-                        .with_fix("Run 'mntn backup' to update backup or 'mntn restore' to restore from backup"),
+                        .with_fix("Run 'dotfm backup' to update backup or 'dotfm restore' to restore from backup"),
                     );
                 }
             }
@@ -179,7 +179,7 @@ impl Validator for BackupConsistencyValidator {
                                                     "{} ({}): Encrypted file differs from backup",
                                                     entry.name, id
                                                 ))
-                                                .with_fix("Run 'mntn backup' to update backup or 'mntn restore' to restore from backup"),
+                                                .with_fix("Run 'dotfm backup' to update backup or 'dotfm restore' to restore from backup"),
                                             );
                                         }
                                     }
@@ -292,7 +292,7 @@ impl Validator for BackupConsistencyValidator {
                                 "{} ({}): Encrypted file differs from backup",
                                 entry.name, id
                             ))
-                            .with_fix("Run 'mntn backup' to update backup or 'mntn restore' to restore from backup"),
+                            .with_fix("Run 'dotfm backup' to update backup or 'dotfm restore' to restore from backup"),
                         );
                     }
                     let _ = fs::remove_file(&temp_path);

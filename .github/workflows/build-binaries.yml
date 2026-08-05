@@ -43,4 +43,4 @@ jobs:
 
       - name: Verify binaries exist
         run: |
-          ls -la target/release/mntn
+          ls -la target/release/dotfm

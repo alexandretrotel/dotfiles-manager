@@ -69,7 +69,7 @@ impl Command for DoctorTask {
 
 pub(crate) fn run(args: crate::cli::DoctorArgs) -> color_eyre::eyre::Result<()> {
     if let Ok(true) = ProfileConfig::save_default_if_missing() {
-        println!("Created default profile config at ~/.mntn/profiles.json");
+        println!("Created default profile config at ~/.dotfm/profiles.json");
     }
 
     match args.action {

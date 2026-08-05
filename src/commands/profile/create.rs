@@ -44,6 +44,6 @@ pub(crate) fn create_profile(name: &str, description: Option<String>) -> Result<
         println!("   Description: {}", desc);
     }
     println!();
-    println!("Switch to this profile with: mntn use {}", name);
+    println!("Switch to this profile with: dotfm use {}", name);
     Ok(())
 }

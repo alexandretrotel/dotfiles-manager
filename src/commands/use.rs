@@ -40,10 +40,10 @@ impl Command for UseTask {
         if !config.profile_exists(&self.profile_name) {
             return Err(eyre!("Profile '{}' does not exist", self.profile_name))
                 .suggestion(format!(
-                    "Create it with: mntn profile create {}",
+                    "Create it with: dotfm profile create {}",
                     self.profile_name
                 ))
-                .suggestion("List available profiles with: mntn profile list");
+                .suggestion("List available profiles with: dotfm profile list");
         }
 
         let current = get_active_profile_name();
@@ -56,7 +56,7 @@ impl Command for UseTask {
 
         println!("Switched to profile '{}'", self.profile_name);
         println!();
-        println!("Run 'mntn restore' to apply this profile's configurations");
+        println!("Run 'dotfm restore' to apply this profile's configurations");
 
         Ok(())
     }

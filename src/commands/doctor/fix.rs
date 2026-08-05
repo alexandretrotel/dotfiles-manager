@@ -138,7 +138,7 @@ impl FixTask {
 /// Write `content` to `path` atomically by writing a sibling temp file and
 /// renaming it into place, so a crash mid-write cannot truncate the original.
 fn write_atomic(path: &Path, content: &str) -> std::io::Result<()> {
-    let tmp_path = path.with_extension("json.mntn-tmp");
+    let tmp_path = path.with_extension("json.dotfm-tmp");
     fs::write(&tmp_path, content)?;
     fs::rename(&tmp_path, path)
 }

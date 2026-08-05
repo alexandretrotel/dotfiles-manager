@@ -57,7 +57,7 @@ pub fn create_temp_file_path() -> std::io::Result<std::path::PathBuf> {
         .as_nanos();
 
     for attempt in 0..10 {
-        let name = format!("mntn-doctor-{}-{}-{}", pid, base, attempt);
+        let name = format!("dotfm-doctor-{}-{}-{}", pid, base, attempt);
         let path = dir.join(name);
         match fs::OpenOptions::new()
             .write(true)
