@@ -1,9 +1,10 @@
-use color_eyre::eyre::{Result, WrapErr};
 use std::collections::HashMap;
 use std::fs;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
+
+use crate::error::{Result, WrapErr};
 
 pub(crate) fn normalize_tar_path(path: &Path) -> String {
     path.to_string_lossy()
@@ -12,7 +13,9 @@ pub(crate) fn normalize_tar_path(path: &Path) -> String {
         .to_string()
 }
 
-pub(crate) fn write_entries_tar(tar_path: &Path, entries: &[(&str, &Path)]) -> Result<()> {
+/// Write a deterministic tar archive with the given `(archive path, file)`
+/// entries.
+pub fn write_entries_tar(tar_path: &Path, entries: &[(&str, &Path)]) -> Result<()> {
     let file = fs::File::create(tar_path)
         .wrap_err_with(|| format!("Create tar archive {}", tar_path.display()))?;
     let mut builder = tar::Builder::new(file);
@@ -33,7 +36,9 @@ pub(crate) fn write_entries_tar(tar_path: &Path, entries: &[(&str, &Path)]) -> R
     Ok(())
 }
 
-pub(crate) fn load_tar_member_map(tar_path: &Path) -> Result<HashMap<String, Vec<u8>>> {
+/// Read every regular file in a tar archive into memory, keyed by archive
+/// path.
+pub fn load_tar_member_map(tar_path: &Path) -> Result<HashMap<String, Vec<u8>>> {
     let file = fs::File::open(tar_path).wrap_err("Open tar for reading")?;
     let mut archive = tar::Archive::new(file);
     let mut map = HashMap::new();
@@ -52,7 +57,8 @@ pub(crate) fn load_tar_member_map(tar_path: &Path) -> Result<HashMap<String, Vec
     Ok(map)
 }
 
-pub(crate) fn set_private_file_permissions(path: &Path) -> Result<()> {
+/// Make a file private (mode 0600). No-op on non-unix platforms.
+pub fn set_private_file_permissions(path: &Path) -> Result<()> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -66,7 +72,8 @@ pub(crate) fn set_private_file_permissions(path: &Path) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn create_temp_path(label: &str) -> std::io::Result<PathBuf> {
+/// Create a unique empty temp file and return its path.
+pub fn create_temp_path(label: &str) -> std::io::Result<PathBuf> {
     let dir = std::env::temp_dir();
     let pid = std::process::id();
     let base = SystemTime::now()

@@ -1,117 +1,18 @@
 mod bundle;
 
-use age::secrecy::ExposeSecret;
-use age::secrecy::SecretString;
-use color_eyre::eyre::{Result, WrapErr, bail};
-use keyring_core::{Entry, Error as KeyringError, set_default_store};
 use std::fs;
 use std::io::{Read, Write};
 use std::path::Path;
-use std::sync::OnceLock;
 
-const KEYRING_SERVICE: &str = "dotfm";
-const KEYRING_USERNAME: &str = "encryption";
-
-#[cfg(target_os = "macos")]
-fn init_default_keyring_store() -> Result<()> {
-    set_default_store(apple_native_keyring_store::keychain::Store::new()?);
-    Ok(())
-}
-
-#[cfg(target_os = "windows")]
-fn init_default_keyring_store() -> Result<()> {
-    set_default_store(windows_native_keyring_store::Store::new()?);
-    Ok(())
-}
-
-#[cfg(target_os = "linux")]
-fn init_default_keyring_store() -> Result<()> {
-    set_default_store(zbus_secret_service_keyring_store::Store::new()?);
-    Ok(())
-}
-
-#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
-fn init_default_keyring_store() -> Result<()> {
-    bail!("No supported keyring store configured for this operating system");
-}
-
-fn keyring_entry() -> color_eyre::eyre::Result<Entry> {
-    static INIT: OnceLock<Result<()>> = OnceLock::new();
-    INIT.get_or_init(init_default_keyring_store)
-        .as_ref()
-        .map_err(|e| color_eyre::eyre::eyre!(e.to_string()))?;
-    Entry::new(KEYRING_SERVICE, KEYRING_USERNAME).map_err(color_eyre::eyre::Report::from)
-}
-
-pub(crate) use bundle::{
+use age::secrecy::SecretString;
+pub use bundle::{
     create_temp_path, load_tar_member_map, set_private_file_permissions, write_entries_tar,
 };
 
-pub(crate) fn prompt_password(confirm: bool) -> Result<SecretString> {
-    let password =
-        rpassword::prompt_password("Enter encryption password: ").wrap_err("Read password")?;
+use crate::error::{Result, WrapErr};
 
-    if password.is_empty() {
-        bail!("Password cannot be empty");
-    }
-
-    if confirm {
-        let confirmation = rpassword::prompt_password("Confirm encryption password: ")
-            .wrap_err("Read password confirmation")?;
-        if password != confirmation {
-            bail!("Passwords do not match");
-        }
-    }
-
-    Ok(SecretString::new(password.into()))
-}
-
-fn read_stored_password() -> Option<SecretString> {
-    let entry = keyring_entry().ok()?;
-    let password = entry.get_password().ok()?;
-    (!password.is_empty()).then_some(SecretString::new(password.into()))
-}
-
-pub(crate) fn persist_encryption_password() -> Result<()> {
-    let password =
-        prompt_password(true).wrap_err("Read encryption password for system keychain")?;
-    let entry = keyring_entry().wrap_err("Open system keychain")?;
-    entry
-        .set_password(password.expose_secret())
-        .wrap_err("Save encryption password to system keychain")?;
-    Ok(())
-}
-
-pub(crate) fn clear_stored_encryption_password() -> Result<()> {
-    let entry = keyring_entry().wrap_err("Open system keychain")?;
-    match entry.delete_credential() {
-        Ok(()) => Ok(()),
-        Err(KeyringError::NoEntry) => Ok(()),
-        Err(e) => {
-            Err(color_eyre::eyre::Report::from(e)).wrap_err("Remove encryption password from system keychain")
-        }
-    }
-}
-
-pub(crate) fn resolve_encryption_password(
-    ask_password: bool,
-    confirm_on_prompt: bool,
-) -> Result<SecretString> {
-    let stored = read_stored_password();
-    let had_stored = stored.is_some();
-    if !ask_password && let Some(password) = stored {
-        return Ok(password);
-    }
-    let password = prompt_password(confirm_on_prompt)?;
-    if !had_stored {
-        eprintln!(
-            "Tip: run `dotfm secret set` to save this password in your system keychain and skip prompts later."
-        );
-    }
-    Ok(password)
-}
-
-pub(crate) fn encrypt_file(source: &Path, dest: &Path, password: &SecretString) -> Result<()> {
+/// Encrypt `source` into `dest` with an age passphrase.
+pub fn encrypt_file(source: &Path, dest: &Path, password: &SecretString) -> Result<()> {
     let content = fs::read(source)
         .wrap_err_with(|| format!("Read source file for encryption: {}", source.display()))?;
 
@@ -136,12 +37,13 @@ pub(crate) fn encrypt_file(source: &Path, dest: &Path, password: &SecretString) 
     Ok(())
 }
 
-pub(crate) fn decrypt_file(source: &Path, dest: &Path, password: &SecretString) -> Result<()> {
+/// Decrypt `source` into `dest`. On unix the restored file is made private
+/// (mode 0600).
+pub fn decrypt_file(source: &Path, dest: &Path, password: &SecretString) -> Result<()> {
     let encrypted = fs::read(source)
         .wrap_err_with(|| format!("Read encrypted file for decryption: {}", source.display()))?;
 
     let decryptor = age::Decryptor::new(&encrypted[..]).wrap_err("Create decryptor")?;
-
     let identity = age::scrypt::Identity::new(password.clone());
 
     let mut decrypted = vec![];
@@ -160,17 +62,12 @@ pub(crate) fn decrypt_file(source: &Path, dest: &Path, password: &SecretString) 
     fs::write(dest, decrypted)
         .wrap_err_with(|| format!("Write decrypted file: {}", dest.display()))?;
 
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let permissions = std::fs::Permissions::from_mode(0o600);
-        fs::set_permissions(dest, permissions)
-            .wrap_err_with(|| format!("Set permissions on: {}", dest.display()))?;
-    }
+    set_private_file_permissions(dest)?;
 
     Ok(())
 }
 
-pub(crate) fn get_encrypted_path(source_path: &str) -> String {
+/// Path of the per-file encrypted backup for a source path.
+pub fn get_encrypted_path(source_path: &str) -> String {
     format!("{}.age", source_path)
 }
