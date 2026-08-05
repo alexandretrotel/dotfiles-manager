@@ -25,16 +25,18 @@ dotfm use work
 
 ## Core Commands
 
-- `backup` - copy tracked configs into `~/.dotfm/backup/`
-- `restore` - restore configs from backup
-- `doctor` - check registry files and config drift; `doctor fix` reformats valid JSON configs with serde_json's pretty printer (it cannot repair true syntax errors, only normalize formatting)
-- `secret` - store (`secret set`) or remove (`secret delete`) the encryption passphrase in the OS keychain so `backup` / `restore` / `doctor` can reuse it without prompting
-- `profile` - list/create/delete profiles
-- `use` - switch active profile
-- `git` - run any git command inside `~/.dotfm`
-- `sync` - run `git add .`, commit with default message `chore: sync dotfm (YYYY-MM-DD HH:MM:SS UTC)` (use `--message` to override), then `git push` inside `~/.dotfm`
+| Command   | What it does                                                             |
+| --------- | ------------------------------------------------------------------------- |
+| `backup`  | Copy tracked configs into `~/.dotfm/backup/`                              |
+| `restore` | Restore configs from backup                                               |
+| `doctor`  | Check registry files and config drift                                     |
+| `profile` | List, create, or delete profiles                                          |
+| `use`     | Switch the active profile                                                 |
+| `git`     | Run any git command inside `~/.dotfm`                                     |
+| `sync`    | Commit and push changes inside `~/.dotfm`                                 |
+| `secret`  | Store or remove the encryption passphrase in the OS keychain              |
 
-Encrypted configs: run `dotfm secret set` after you know your passphrase to persist it. Add `--ask-password` to `backup`, `restore`, or `doctor` to type the passphrase for that run (bypassing the keychain) so encrypted files are still processed.
+**Encrypted configs:** run `dotfm secret set` once you know your passphrase to persist it. Pass `--ask-password` to `backup`, `restore`, or `doctor` to type the passphrase for that run instead (bypassing the keychain) — encrypted files are still processed either way.
 
 ## Directory Layout
 
