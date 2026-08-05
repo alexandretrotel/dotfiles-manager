@@ -34,7 +34,7 @@ dotfm use work
 - `git` - run any git command inside `~/.dotfm`
 - `sync` - run `git add .`, commit with default message `chore: sync dotfm (YYYY-MM-DD HH:MM:SS UTC)` (use `--message` to override), then `git push` inside `~/.dotfm`
 
-Encrypted configs: run `dotfm secret set` after you know your passphrase to persist it. Use `--ask-password` on `backup`, `restore`, or `doctor` if you want to type it for that run only.
+Encrypted configs: run `dotfm secret set` after you know your passphrase to persist it. Add `--ask-password` to `backup`, `restore`, or `doctor` to type the passphrase for that run (bypassing the keychain) so encrypted files are still processed.
 
 ## Directory Layout
 
@@ -42,7 +42,7 @@ Encrypted configs: run `dotfm secret set` after you know your passphrase to pers
 ~/.dotfm/
 ├── backup/
 │   ├── common/
-│   │   └── encrypted/          # optional: encrypted bundle + legacy per-file .age
+│   │   └── encrypted/          # optional: encrypted bundle
 │   └── profiles/
 │       └── <name>/
 │           └── encrypted/
