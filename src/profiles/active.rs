@@ -2,13 +2,13 @@ use std::fs;
 use std::io;
 use std::path::PathBuf;
 
-use crate::utils::paths::get_encrypted_common_path;
-use crate::utils::paths::get_encrypted_profiles_path;
-use crate::utils::paths::{get_active_profile_path, get_common_path, get_profiles_path};
+use crate::context::Dotfm;
 
+/// The profile a backup or restore run targets: either a named profile
+/// layered on top of `common`, or `common` alone.
 #[derive(Debug, Clone)]
-pub(crate) struct ActiveProfile {
-    pub(crate) name: Option<String>,
+pub struct ActiveProfile {
+    pub name: Option<String>,
 }
 
 impl std::fmt::Display for ActiveProfile {
@@ -21,44 +21,53 @@ impl std::fmt::Display for ActiveProfile {
 }
 
 impl ActiveProfile {
-    pub(crate) fn with_profile(name: &str) -> Self {
+    /// Target the named profile.
+    pub fn with_profile(name: &str) -> Self {
         Self {
             name: Some(name.to_string()),
         }
     }
 
-    pub(crate) fn common_only() -> Self {
+    /// Target the `common` layer only.
+    pub fn common_only() -> Self {
         Self { name: None }
     }
 
-    pub(crate) fn resolve(cli_profile: Option<&str>) -> Self {
-        if let Some(profile) = cli_profile {
+    /// Resolve the target profile: an explicit override wins, then the
+    /// `DOTFM_PROFILE` environment variable, then the persisted active
+    /// profile, then `common`.
+    pub fn resolve(ctx: &Dotfm, override_profile: Option<&str>) -> Self {
+        if let Some(profile) = override_profile {
             return Self::with_profile(profile);
         }
 
-        if let Some(profile) = get_active_profile_name() {
+        if let Some(profile) = get_active_profile_name(ctx) {
             return Self::with_profile(&profile);
         }
 
         Self::common_only()
     }
 
-    pub(crate) fn get_backup_path(&self) -> PathBuf {
+    /// This profile's backup directory (profile layer or `common`).
+    pub fn backup_path(&self, ctx: &Dotfm) -> PathBuf {
         match &self.name {
-            Some(name) => get_profiles_path(name),
-            None => get_common_path(),
+            Some(name) => ctx.profile_dir(name),
+            None => ctx.common_dir(),
         }
     }
 
-    pub(crate) fn get_encrypted_backup_path(&self) -> PathBuf {
+    /// This profile's encrypted-files directory (profile layer or `common`).
+    pub fn encrypted_backup_path(&self, ctx: &Dotfm) -> PathBuf {
         match &self.name {
-            Some(name) => get_encrypted_profiles_path(name),
-            None => get_encrypted_common_path(),
+            Some(name) => ctx.encrypted_profile_dir(name),
+            None => ctx.encrypted_common_dir(),
         }
     }
 }
 
-pub(crate) fn get_active_profile_name() -> Option<String> {
+/// Name of the active profile, from `DOTFM_PROFILE` or the persisted
+/// `.active-profile` file.
+pub fn get_active_profile_name(ctx: &Dotfm) -> Option<String> {
     if let Ok(profile) = std::env::var("DOTFM_PROFILE") {
         let trimmed = profile.trim();
         if !trimmed.is_empty() {
@@ -66,7 +75,7 @@ pub(crate) fn get_active_profile_name() -> Option<String> {
         }
     }
 
-    let active_profile_path = get_active_profile_path();
+    let active_profile_path = ctx.active_profile_path();
     if let Ok(profile) = fs::read_to_string(&active_profile_path) {
         let trimmed = profile.trim();
         if !trimmed.is_empty() {
@@ -77,16 +86,18 @@ pub(crate) fn get_active_profile_name() -> Option<String> {
     None
 }
 
-pub(crate) fn set_active_profile(profile_name: &str) -> io::Result<()> {
-    let active_profile_path = get_active_profile_path();
+/// Persist `profile_name` as the active profile.
+pub fn set_active_profile(ctx: &Dotfm, profile_name: &str) -> io::Result<()> {
+    let active_profile_path = ctx.active_profile_path();
     if let Some(parent) = active_profile_path.parent() {
         fs::create_dir_all(parent)?;
     }
     fs::write(active_profile_path, profile_name)
 }
 
-pub(crate) fn clear_active_profile() -> io::Result<()> {
-    let active_profile_path = get_active_profile_path();
+/// Remove the persisted active profile, if any.
+pub fn clear_active_profile(ctx: &Dotfm) -> io::Result<()> {
+    let active_profile_path = ctx.active_profile_path();
     if active_profile_path.exists() {
         fs::remove_file(active_profile_path)?;
     }

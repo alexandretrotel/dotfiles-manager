@@ -1,14 +1,11 @@
 use std::path::{Component, Path, PathBuf};
 
-use crate::utils::paths::{
-    ENCRYPTED_BUNDLE_FILE, get_common_path, get_encrypted_common_path, get_encrypted_profiles_path,
-    get_profiles_path,
-};
-
 use super::ActiveProfile;
+use crate::context::{Dotfm, ENCRYPTED_BUNDLE_FILE};
 
+/// Which backup layer a source file was found in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum SourceLayer {
+pub enum SourceLayer {
     Common,
     Profile,
 }
@@ -22,78 +19,71 @@ impl std::fmt::Display for SourceLayer {
     }
 }
 
+/// A backup file found on disk, together with which layer it came from.
 #[derive(Debug, Clone)]
-pub(crate) struct ResolvedSource {
-    pub(crate) path: PathBuf,
-    pub(crate) layer: SourceLayer,
+pub struct ResolvedSource {
+    pub path: PathBuf,
+    pub layer: SourceLayer,
 }
 
 impl ActiveProfile {
-    pub(crate) fn resolve_source(&self, source_path: &str) -> Option<ResolvedSource> {
-        if !is_valid_source_path(source_path) {
-            return None;
-        }
-
-        let candidates = self.get_candidate_sources(source_path);
-
-        for (path, layer) in candidates {
-            if path.exists() {
-                return Some(ResolvedSource { path, layer });
-            }
-        }
-
-        None
+    /// First existing backup of `source_path`, profile layer first.
+    pub fn resolve_source(&self, ctx: &Dotfm, source_path: &str) -> Option<ResolvedSource> {
+        Self::first_existing(self.get_candidate_sources(ctx, source_path))
     }
 
-    pub(crate) fn get_candidate_sources(&self, source_path: &str) -> Vec<(PathBuf, SourceLayer)> {
-        if !is_valid_source_path(source_path) {
-            return Vec::new();
-        }
-
-        let mut candidates = Vec::new();
-
-        if let Some(profile_name) = &self.name {
-            candidates.push((
-                get_profiles_path(profile_name).join(source_path),
-                SourceLayer::Profile,
-            ));
-        }
-
-        candidates.push((get_common_path().join(source_path), SourceLayer::Common));
-        candidates
-    }
-
-    pub(crate) fn get_all_resolved_sources(&self, source_path: &str) -> Vec<ResolvedSource> {
-        self.get_candidate_sources(source_path)
-            .into_iter()
-            .filter(|(path, _)| path.exists())
-            .map(|(path, layer)| ResolvedSource { path, layer })
-            .collect()
-    }
-
-    pub(crate) fn resolve_encrypted_bundle(&self) -> Option<ResolvedSource> {
-        self.resolve_encrypted_source(ENCRYPTED_BUNDLE_FILE)
-    }
-
-    pub(crate) fn resolve_encrypted_source(&self, source_path: &str) -> Option<ResolvedSource> {
-        if !is_valid_source_path(source_path) {
-            return None;
-        }
-
-        let candidates = self.get_candidate_encrypted_sources(source_path);
-
-        for (path, layer) in candidates {
-            if path.exists() {
-                return Some(ResolvedSource { path, layer });
-            }
-        }
-
-        None
-    }
-
-    pub(crate) fn get_candidate_encrypted_sources(
+    /// Where `source_path` could live, profile layer first (whether or not
+    /// each candidate actually exists on disk).
+    pub fn get_candidate_sources(
         &self,
+        ctx: &Dotfm,
         source_path: &str,
+    ) -> Vec<(PathBuf, SourceLayer)> {
+        self.candidate_paths(ctx, source_path, Dotfm::profile_dir, Dotfm::common_dir)
+    }
+
+    /// Every existing backup of `source_path`, across all layers.
+    pub fn get_all_resolved_sources(&self, ctx: &Dotfm, source_path: &str) -> Vec<ResolvedSource> {
+        Self::all_existing(self.get_candidate_sources(ctx, source_path))
+    }
+
+    /// First existing encrypted bundle, profile layer first.
+    pub fn resolve_encrypted_bundle(&self, ctx: &Dotfm) -> Option<ResolvedSource> {
+        self.resolve_encrypted_source(ctx, ENCRYPTED_BUNDLE_FILE)
+    }
+
+    /// First existing encrypted backup of `source_path`, profile layer first.
+    pub fn resolve_encrypted_source(
+        &self,
+        ctx: &Dotfm,
+        source_path: &str,
+    ) -> Option<ResolvedSource> {
+        Self::first_existing(self.get_candidate_encrypted_sources(ctx, source_path))
+    }
+
+    /// Where the encrypted backup of `source_path` could live, profile layer
+    /// first (whether or not each candidate actually exists on disk).
+    pub fn get_candidate_encrypted_sources(
+        &self,
+        ctx: &Dotfm,
+        source_path: &str,
+    ) -> Vec<(PathBuf, SourceLayer)> {
+        self.candidate_paths(
+            ctx,
+            source_path,
+            Dotfm::encrypted_profile_dir,
+            Dotfm::encrypted_common_dir,
+        )
+    }
+
+    /// Profile layer (if any) then common layer, for whichever pair of
+    /// directory getters the caller passes (plain or encrypted).
+    fn candidate_paths(
+        &self,
+        ctx: &Dotfm,
+        source_path: &str,
+        profile_dir: impl Fn(&Dotfm, &str) -> PathBuf,
+        common_dir: impl Fn(&Dotfm) -> PathBuf,
     ) -> Vec<(PathBuf, SourceLayer)> {
         if !is_valid_source_path(source_path) {
             return Vec::new();
@@ -103,20 +93,36 @@ impl ActiveProfile {
 
         if let Some(profile_name) = &self.name {
             candidates.push((
-                get_encrypted_profiles_path(profile_name).join(source_path),
+                profile_dir(ctx, profile_name).join(source_path),
                 SourceLayer::Profile,
             ));
         }
 
-        candidates.push((
-            get_encrypted_common_path().join(source_path),
-            SourceLayer::Common,
-        ));
-
+        candidates.push((common_dir(ctx).join(source_path), SourceLayer::Common));
         candidates
+    }
+
+    /// First candidate that exists on disk.
+    fn first_existing(candidates: Vec<(PathBuf, SourceLayer)>) -> Option<ResolvedSource> {
+        candidates
+            .into_iter()
+            .find(|(path, _)| path.exists())
+            .map(|(path, layer)| ResolvedSource { path, layer })
+    }
+
+    /// All candidates that exist on disk.
+    fn all_existing(candidates: Vec<(PathBuf, SourceLayer)>) -> Vec<ResolvedSource> {
+        candidates
+            .into_iter()
+            .filter(|(path, _)| path.exists())
+            .map(|(path, layer)| ResolvedSource { path, layer })
+            .collect()
     }
 }
 
+/// Rejects empty paths, absolute paths, and paths with `..` components —
+/// `source_path` is later joined onto a backup directory, so it must not be
+/// able to escape it.
 fn is_valid_source_path(source_path: &str) -> bool {
     if source_path.is_empty() {
         return false;
