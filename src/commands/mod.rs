@@ -1,9 +1,0 @@
-pub(crate) mod backup;
-pub(crate) mod core;
-pub(crate) mod doctor;
-pub(crate) mod git;
-pub(crate) mod profile;
-pub(crate) mod restore;
-pub(crate) mod secret;
-pub(crate) mod sync;
-pub(crate) mod r#use;
