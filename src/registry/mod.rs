@@ -18,6 +18,17 @@ pub trait RegistryEntryLike {
     fn is_enabled(&self) -> bool;
 }
 
+#[macro_export]
+macro_rules! impl_registry_entry_like {
+    ($t:ty) => {
+        impl $crate::registry::RegistryEntryLike for $t {
+            fn is_enabled(&self) -> bool {
+                self.enabled
+            }
+        }
+    };
+}
+
 /// A JSON-backed map of registry entries stored on disk.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Registry<T> {

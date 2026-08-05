@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::registry::{Registry, RegistryEntryLike};
+use crate::registry::Registry;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PackageRegistryEntry {
@@ -15,11 +15,7 @@ pub struct PackageRegistryEntry {
     pub platforms: Option<Vec<String>>,
 }
 
-impl RegistryEntryLike for PackageRegistryEntry {
-    fn is_enabled(&self) -> bool {
-        self.enabled
-    }
-}
+crate::impl_registry_entry_like!(PackageRegistryEntry);
 
 pub type PackageRegistry = Registry<PackageRegistryEntry>;
 
@@ -94,20 +90,9 @@ impl PackageRegistry {
         self.entries.iter().filter(move |(_, entry)| {
             entry.enabled
                 && match &entry.platforms {
-                    Some(platforms) => platforms.contains(&current_platform.to_string()),
+                    Some(platforms) => platforms.iter().any(|p| p == current_platform),
                     None => true,
                 }
         })
-    }
-
-    pub fn get_current_platform() -> String {
-        #[cfg(target_os = "macos")]
-        return "macos".into();
-        #[cfg(target_os = "linux")]
-        return "linux".into();
-        #[cfg(target_os = "windows")]
-        return "windows".into();
-        #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
-        return "unknown".into();
     }
 }

@@ -3,7 +3,7 @@ use std::{collections::HashMap, path::PathBuf};
 use directories_next::BaseDirs;
 use serde::{Deserialize, Serialize};
 
-use crate::registry::{Registry, RegistryEntryLike};
+use crate::registry::Registry;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigRegistryEntry {
@@ -14,11 +14,7 @@ pub struct ConfigRegistryEntry {
     pub target_path: PathBuf,
 }
 
-impl RegistryEntryLike for ConfigRegistryEntry {
-    fn is_enabled(&self) -> bool {
-        self.enabled
-    }
-}
+crate::impl_registry_entry_like!(ConfigRegistryEntry);
 
 pub type ConfigRegistry = Registry<ConfigRegistryEntry>;
 
