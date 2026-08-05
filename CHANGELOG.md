@@ -4,6 +4,9 @@ All notable changes to this project are documented in this file.
 
 ## v5.0.0
 
+### Added
+- `dotfm` is now usable as a library: operations live in `dotfm::backup`, `dotfm::restore`, `dotfm::sync`, `dotfm::git`, `dotfm::doctor`, `dotfm::profiles`, `dotfm::keyring`, `dotfm::encryption`, and `dotfm::registry`, take a `Dotfm` context (custom root supported via `Dotfm::with_root`), and return report structs instead of printing. The CLI is a thin binary behind the default `cli` feature; depend on the library with `default-features = false`.
+
 ### Changed
 - **Breaking:** The crate, binary, and repository have been renamed from `mntn` to `dotfm`. Install with `cargo install dotfm` and invoke the CLI as `dotfm`.
 - **Breaking:** The data directory moved from `~/.mntn` to `~/.dotfm`. Existing users must move it manually: `mv ~/.mntn ~/.dotfm`.
