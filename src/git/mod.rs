@@ -4,7 +4,7 @@ use std::process::{Command, Stdio};
 
 use crate::context::Dotfm;
 use crate::error::{Error, Result};
-use crate::utils::system::run_cmd;
+use crate::utils::process::run_cmd;
 
 /// Repository setup actions performed while preparing the dotfm root.
 #[derive(Debug, Clone, Default)]
