@@ -28,7 +28,7 @@ pub mod registry;
 mod report;
 pub mod restore;
 pub mod sync;
-mod util;
+mod utils;
 
 pub use context::{Dotfm, ENCRYPTED_BUNDLE_FILE, PROFILE_CONFIG_FILE};
 pub use error::{Error, Result};
