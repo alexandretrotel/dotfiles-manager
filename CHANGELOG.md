@@ -8,7 +8,7 @@ All notable changes to this project are documented in this file.
 - `dotfm` is now usable as a library: operations live in `dotfm::backup`, `dotfm::restore`, `dotfm::sync`, `dotfm::git`, `dotfm::doctor`, `dotfm::profiles`, `dotfm::keyring`, `dotfm::encryption`, and `dotfm::registry`, take a `Dotfm` context (custom root supported via `Dotfm::with_root`), and return report structs instead of printing. The CLI is a thin binary behind the default `cli` feature; depend on the library with `default-features = false`.
 
 ### Changed
-- The default config registry no longer includes a Ghostty entry (and its macOS-specific path logic was removed). Existing registry files are unaffected; add Ghostty back manually in `config.registry.json` if you use it.
+- The default config registry no longer includes entries for Ghostty, Vim, VS Code (settings and keybindings), Zed, or Git config (and Ghostty's macOS-specific path logic was removed). The default package registry no longer includes entries for Homebrew casks, pnpm, Bun, Deno, or pip. Existing registry files are unaffected.
 - **Breaking:** The crate, binary, and repository have been renamed from `mntn` to `dotfm`. Install with `cargo install dotfm` and invoke the CLI as `dotfm`.
 - **Breaking:** The data directory moved from `~/.mntn` to `~/.dotfm`. Existing users must move it manually: `mv ~/.mntn ~/.dotfm`.
 - **Breaking:** The encrypted bundle filename changed from `mntn-encrypted-bundle.age` to `dotfm-encrypted-bundle.age`. Rename the file inside your backup directory before running `dotfm restore`.

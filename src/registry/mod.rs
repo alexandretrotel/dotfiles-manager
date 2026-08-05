@@ -2,27 +2,25 @@ pub mod config;
 pub mod encrypted;
 pub mod package;
 
-use crate::errors::Result;
-use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, collections::HashMap, path::PathBuf};
+use std::path::Path;
+use std::{collections::BTreeMap, collections::HashMap};
 
-pub(crate) trait RegistryEntryLike {
+pub use config::{ConfigRegistry, ConfigRegistryEntry};
+pub use encrypted::{EncryptedRegistry, EncryptedRegistryEntry};
+pub use package::{PackageRegistry, PackageRegistryEntry};
+use serde::{Deserialize, Serialize};
+
+use crate::error::Result;
+
+/// Implemented by registry entry types so [`Registry`] can filter on the
+/// shared `enabled` flag.
+pub trait RegistryEntryLike {
     fn is_enabled(&self) -> bool;
 }
 
-#[macro_export]
-macro_rules! impl_registry_entry_like {
-    ($t:ty) => {
-        impl RegistryEntryLike for $t {
-            fn is_enabled(&self) -> bool {
-                self.enabled
-            }
-        }
-    };
-}
-
+/// A JSON-backed map of registry entries stored on disk.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct Registry<T> {
+pub struct Registry<T> {
     pub version: String,
     pub entries: HashMap<String, T>,
 }
@@ -31,7 +29,9 @@ impl<T> Registry<T>
 where
     T: RegistryEntryLike + Clone + Serialize + for<'a> Deserialize<'a>,
 {
-    pub(crate) fn load_or_create(path: &PathBuf) -> Result<Self>
+    /// Load the registry at `path`, creating it with default contents when
+    /// the file does not exist yet.
+    pub fn load_or_create(path: &Path) -> Result<Self>
     where
         Self: Default,
     {
@@ -46,7 +46,7 @@ where
         }
     }
 
-    pub(crate) fn save(&self, path: &PathBuf) -> Result<()> {
+    pub fn save(&self, path: &Path) -> Result<()> {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
@@ -62,7 +62,7 @@ where
         Ok(())
     }
 
-    pub(crate) fn get_enabled_entries(&self) -> impl Iterator<Item = (&String, &T)> {
+    pub fn get_enabled_entries(&self) -> impl Iterator<Item = (&String, &T)> {
         self.entries.iter().filter(|(_, e)| e.is_enabled())
     }
 }

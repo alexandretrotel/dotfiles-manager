@@ -1,10 +1,11 @@
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+
+use serde::{Deserialize, Serialize};
 
 use crate::registry::{Registry, RegistryEntryLike};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct PackageRegistryEntry {
+pub struct PackageRegistryEntry {
     pub name: String,
     pub description: Option<String>,
     pub enabled: bool,
@@ -14,11 +15,13 @@ pub(crate) struct PackageRegistryEntry {
     pub platforms: Option<Vec<String>>,
 }
 
-use crate::impl_registry_entry_like;
+impl RegistryEntryLike for PackageRegistryEntry {
+    fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+}
 
-impl_registry_entry_like!(PackageRegistryEntry);
-
-pub(crate) type PackageRegistry = Registry<PackageRegistryEntry>;
+pub type PackageRegistry = Registry<PackageRegistryEntry>;
 
 impl Default for PackageRegistry {
     fn default() -> Self {
@@ -38,19 +41,6 @@ impl Default for PackageRegistry {
         );
 
         entries.insert(
-            "brew_cask".to_string(),
-            PackageRegistryEntry {
-                name: "Homebrew Casks".to_string(),
-                command: "brew".to_string(),
-                args: vec!["list".to_string(), "--cask".to_string()],
-                output_file: "brew-cask.txt".to_string(),
-                enabled: true,
-                description: Some("Homebrew installed casks (applications)".to_string()),
-                platforms: Some(vec!["macos".to_string()]),
-            },
-        );
-
-        entries.insert(
             "npm".to_string(),
             PackageRegistryEntry {
                 name: "npm".to_string(),
@@ -59,49 +49,6 @@ impl Default for PackageRegistry {
                 output_file: "npm.txt".to_string(),
                 enabled: true,
                 description: Some("npm globally installed packages".to_string()),
-                platforms: None,
-            },
-        );
-
-        entries.insert(
-            "pnpm".to_string(),
-            PackageRegistryEntry {
-                name: "pnpm".to_string(),
-                command: "pnpm".to_string(),
-                args: vec!["ls".to_string(), "-g".to_string()],
-                output_file: "pnpm.txt".to_string(),
-                enabled: true,
-                description: Some("pnpm globally installed packages".to_string()),
-                platforms: None,
-            },
-        );
-
-        entries.insert(
-            "bun".to_string(),
-            PackageRegistryEntry {
-                name: "Bun".to_string(),
-                command: "bun".to_string(),
-                args: vec!["pm".to_string(), "ls".to_string(), "-g".to_string()],
-                output_file: "bun.txt".to_string(),
-                enabled: true,
-                description: Some("Bun globally installed packages".to_string()),
-                platforms: None,
-            },
-        );
-
-        entries.insert(
-            "deno".to_string(),
-            PackageRegistryEntry {
-                name: "Deno".to_string(),
-                command: "deno".to_string(),
-                args: vec![
-                    "install".to_string(),
-                    "--".to_string(),
-                    "--list".to_string(),
-                ],
-                output_file: "deno.txt".to_string(),
-                enabled: true,
-                description: Some("Deno globally installed packages".to_string()),
                 platforms: None,
             },
         );
@@ -128,19 +75,6 @@ impl Default for PackageRegistry {
                 output_file: "uv.txt".to_string(),
                 enabled: true,
                 description: Some("uv installed tools".to_string()),
-                platforms: None,
-            },
-        );
-
-        entries.insert(
-            "pip".to_string(),
-            PackageRegistryEntry {
-                name: "pip".to_string(),
-                command: "pip".to_string(),
-                args: vec!["list".to_string(), "--format=freeze".to_string()],
-                output_file: "pip.txt".to_string(),
-                enabled: false,
-                description: Some("pip globally installed packages".to_string()),
                 platforms: None,
             },
         );

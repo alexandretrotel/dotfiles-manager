@@ -1,11 +1,12 @@
+use std::{collections::HashMap, path::PathBuf};
+
 use directories_next::BaseDirs;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::PathBuf};
 
 use crate::registry::{Registry, RegistryEntryLike};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct EncryptedRegistryEntry {
+pub struct EncryptedRegistryEntry {
     pub name: String,
     pub description: Option<String>,
     pub enabled: bool,
@@ -13,11 +14,13 @@ pub(crate) struct EncryptedRegistryEntry {
     pub target_path: PathBuf,
 }
 
-use crate::impl_registry_entry_like;
+impl RegistryEntryLike for EncryptedRegistryEntry {
+    fn is_enabled(&self) -> bool {
+        self.enabled
+    }
+}
 
-impl_registry_entry_like!(EncryptedRegistryEntry);
-
-pub(crate) type EncryptedRegistry = Registry<EncryptedRegistryEntry>;
+pub type EncryptedRegistry = Registry<EncryptedRegistryEntry>;
 
 impl Default for EncryptedRegistry {
     fn default() -> Self {
