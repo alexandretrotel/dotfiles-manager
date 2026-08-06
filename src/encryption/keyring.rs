@@ -17,18 +17,26 @@ fn init_default_keyring_store() -> Result<()> {
     Ok(())
 }
 
+/// Register the platform-native keychain backend as the default
+/// `keyring-core` store (macOS Keychain / Windows Credential Manager /
+/// Linux Secret Service).
 #[cfg(target_os = "windows")]
 fn init_default_keyring_store() -> Result<()> {
     set_default_store(windows_native_keyring_store::Store::new()?);
     Ok(())
 }
 
+/// Register the platform-native keychain backend as the default
+/// `keyring-core` store (macOS Keychain / Windows Credential Manager /
+/// Linux Secret Service).
 #[cfg(target_os = "linux")]
 fn init_default_keyring_store() -> Result<()> {
     set_default_store(zbus_secret_service_keyring_store::Store::new()?);
     Ok(())
 }
 
+/// No native keychain store is available on this platform; keyring
+/// operations always fail.
 #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
 fn init_default_keyring_store() -> Result<()> {
     Err(Error::Keyring(
