@@ -18,6 +18,7 @@ All notable changes to this project are documented in this file.
 - **Breaking:** The system keychain service name changed from `mntn` to `dotfm`. Re-save your encryption password with `dotfm secret set`.
 - **Breaking:** The profile override environment variable was renamed from `MNTN_PROFILE` to `DOTFM_PROFILE`.
 - **Breaking:** Restore and `dotfm doctor` no longer fall back to legacy per-file `<source_path>.age` backups when the encrypted bundle is missing or unreadable. Encrypted restore and validation now depend solely on the `dotfm-encrypted-bundle.age` bundle; run `dotfm backup` to produce one if you still have per-file `.age` backups from before v3.1.0.
+- Encrypted registry entries may now target directories, not just single files. The whole tree is bundled and restored; previously directories were skipped with "directories are not supported".
 
 ## v4.0.6
 
