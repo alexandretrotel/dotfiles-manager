@@ -84,6 +84,14 @@ where
     pub fn get_enabled_entries(&self) -> impl Iterator<Item = (&String, &T)> {
         self.entries.iter().filter(|(_, e)| e.is_enabled())
     }
+
+    /// All entries, keyed by id, when `include_disabled` is `true`;
+    /// otherwise the same as [`Self::get_enabled_entries`].
+    pub fn get_entries(&self, include_disabled: bool) -> impl Iterator<Item = (&String, &T)> {
+        self.entries
+            .iter()
+            .filter(move |(_, e)| include_disabled || e.is_enabled())
+    }
 }
 
 #[cfg(test)]

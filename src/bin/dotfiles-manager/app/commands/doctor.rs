@@ -28,7 +28,13 @@ pub fn run(ctx: &Dfm, args: DoctorArgs) -> Result<()> {
 
     let profile = ActiveProfile::resolve(ctx, None);
 
-    validate(ctx, &profile, args.skip_encrypted, args.ask_password)
+    validate(
+        ctx,
+        &profile,
+        args.skip_encrypted,
+        args.ask_password,
+        args.include_disabled,
+    )
 }
 
 /// Handle `dfm doctor` (validation).
@@ -37,6 +43,7 @@ fn validate(
     profile: &ActiveProfile,
     skip_encrypted: bool,
     ask_password: bool,
+    include_disabled: bool,
 ) -> Result<()> {
     println!("Validating configuration...");
     println!("   Profile: {}", profile);
@@ -44,7 +51,8 @@ fn validate(
     let password =
         prompt::optional_password(skip_encrypted, ask_password, "encrypted file validation");
 
-    let report = dotfiles_manager::doctor::validate(ctx, profile, password.as_ref());
+    let report =
+        dotfiles_manager::doctor::validate(ctx, profile, password.as_ref(), include_disabled);
     println!();
     print_doctor_report(&report);
     println!();

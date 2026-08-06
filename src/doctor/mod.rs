@@ -11,13 +11,22 @@ use crate::context::Dfm;
 use crate::profiles::ActiveProfile;
 
 /// Run every validator and collect findings. Encrypted backup consistency is
-/// only checked when a `password` is supplied.
+/// only checked when a `password` is supplied. When `include_disabled` is
+/// `true`, the backup consistency check also covers disabled registry
+/// entries.
 pub fn validate(
     ctx: &Dfm,
     profile: &ActiveProfile,
     password: Option<&SecretString>,
+    include_disabled: bool,
 ) -> DoctorReport {
-    ValidationSuite::new(ctx.clone(), profile.clone(), password.cloned()).run_all()
+    ValidationSuite::new(
+        ctx.clone(),
+        profile.clone(),
+        password.cloned(),
+        include_disabled,
+    )
+    .run_all()
 }
 
 #[cfg(test)]
@@ -30,7 +39,7 @@ mod tests {
         let ctx = Dfm::with_root(dir.path());
         let profile = ActiveProfile::common_only();
 
-        let report = validate(&ctx, &profile, None);
+        let report = validate(&ctx, &profile, None, false);
 
         let results = report.results();
         assert_eq!(results.len(), 2);
@@ -45,7 +54,7 @@ mod tests {
         std::fs::write(ctx.config_registry_path(), "not valid json {").unwrap();
         let profile = ActiveProfile::common_only();
 
-        let report = validate(&ctx, &profile, None);
+        let report = validate(&ctx, &profile, None, false);
 
         assert!(report.error_count() >= 1);
     }

@@ -25,10 +25,22 @@ pub(crate) struct ValidationSuite {
 
 impl ValidationSuite {
     /// Build the fixed list of validators, in the order they'll run.
-    pub(crate) fn new(ctx: Dfm, profile: ActiveProfile, password: Option<SecretString>) -> Self {
+    /// `include_disabled` also checks disabled registry entries in the
+    /// backup consistency check.
+    pub(crate) fn new(
+        ctx: Dfm,
+        profile: ActiveProfile,
+        password: Option<SecretString>,
+        include_disabled: bool,
+    ) -> Self {
         let validators: Vec<Box<dyn Validator>> = vec![
             Box::new(RegistryFilesValidator::new(ctx.clone())),
-            Box::new(BackupConsistencyValidator::new(ctx, profile, password)),
+            Box::new(BackupConsistencyValidator::new(
+                ctx,
+                profile,
+                password,
+                include_disabled,
+            )),
         ];
         Self { validators }
     }
@@ -55,7 +67,7 @@ mod tests {
         let ctx = Dfm::with_root(dir.path());
         let profile = ActiveProfile::common_only();
 
-        let suite = ValidationSuite::new(ctx, profile, None);
+        let suite = ValidationSuite::new(ctx, profile, None, false);
         let report = suite.run_all();
 
         let results = report.results();
@@ -70,7 +82,7 @@ mod tests {
         let ctx = Dfm::with_root(dir.path());
         let profile = ActiveProfile::common_only();
 
-        let suite = ValidationSuite::new(ctx, profile, None);
+        let suite = ValidationSuite::new(ctx, profile, None, false);
 
         assert_eq!(suite.validators.len(), 2);
     }

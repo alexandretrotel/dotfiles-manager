@@ -130,6 +130,11 @@ pub struct DoctorArgs {
         help = "Rewrite dfm's own registry/config JSON files (config.registry.json, package.registry.json, encrypted.registry.json, profiles.json) as pretty-printed, sorted JSON. Never touches user-owned backed-up config files."
     )]
     pub fix: bool,
+    #[arg(
+        long,
+        help = "Also check disabled registry entries in the backup consistency check"
+    )]
+    pub include_disabled: bool,
 }
 
 #[derive(Args)]
@@ -196,12 +201,20 @@ mod tests {
 
     #[test]
     fn doctor_with_flags_sets_them_true() {
-        let cli = Cli::try_parse_from(["dfm", "doctor", "--fix", "--skip-encrypted"]).unwrap();
+        let cli = Cli::try_parse_from([
+            "dfm",
+            "doctor",
+            "--fix",
+            "--skip-encrypted",
+            "--include-disabled",
+        ])
+        .unwrap();
         match cli.command {
             Some(Command::Doctor(args)) => {
                 assert!(args.fix);
                 assert!(args.skip_encrypted);
                 assert!(!args.ask_password);
+                assert!(args.include_disabled);
             }
             _ => panic!("expected Doctor command"),
         }
@@ -215,6 +228,7 @@ mod tests {
                 assert!(!args.fix);
                 assert!(!args.skip_encrypted);
                 assert!(!args.ask_password);
+                assert!(!args.include_disabled);
             }
             _ => panic!("expected Doctor command"),
         }
