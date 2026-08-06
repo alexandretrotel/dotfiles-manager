@@ -49,9 +49,7 @@ pub enum Command {
         action: SecretActions,
     },
 
-    #[command(
-        about = "Delete backup directories left behind by profiles that no longer exist"
-    )]
+    #[command(about = "Delete backup directories left behind by profiles that no longer exist")]
     Prune,
 }
 

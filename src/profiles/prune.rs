@@ -35,8 +35,7 @@ pub fn find_orphaned_profiles(ctx: &Dfm) -> Result<Vec<OrphanedProfile>> {
     for entry in fs::read_dir(&profiles_root)
         .wrap_err_with(|| format!("Read profiles directory at {}", profiles_root.display()))?
     {
-        let entry = entry
-            .wrap_err_with(|| format!("Read entry in {}", profiles_root.display()))?;
+        let entry = entry.wrap_err_with(|| format!("Read entry in {}", profiles_root.display()))?;
         if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
             continue;
         }
@@ -62,7 +61,10 @@ pub fn prune_orphaned_profiles(ctx: &Dfm) -> Result<Vec<PrunedProfile>> {
 
     for orphan in orphans {
         fs::remove_dir_all(&orphan.directory).wrap_err_with(|| {
-            format!("Remove orphaned profile directory {}", orphan.directory.display())
+            format!(
+                "Remove orphaned profile directory {}",
+                orphan.directory.display()
+            )
         })?;
         pruned.push(PrunedProfile {
             name: orphan.name,
@@ -159,11 +161,7 @@ mod tests {
     fn prune_orphaned_profiles_removes_nested_encrypted_contents() {
         let (_dir, ctx) = ctx();
         fs::create_dir_all(ctx.encrypted_profile_dir("stale")).unwrap();
-        fs::write(
-            ctx.encrypted_profile_dir("stale").join("secret.age"),
-            "x",
-        )
-        .unwrap();
+        fs::write(ctx.encrypted_profile_dir("stale").join("secret.age"), "x").unwrap();
 
         prune_orphaned_profiles(&ctx).unwrap();
 

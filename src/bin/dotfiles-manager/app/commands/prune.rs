@@ -30,7 +30,11 @@ pub fn run(ctx: &Dfm) -> Result<()> {
         "These backup directories have no matching profile in profiles.json and will be permanently deleted."
     );
 
-    let confirmed = prompt::confirm(&format!("Delete {} orphaned profile {}?", orphans.len(), noun))?;
+    let confirmed = prompt::confirm(&format!(
+        "Delete {} orphaned profile {}?",
+        orphans.len(),
+        noun
+    ))?;
 
     if !confirmed {
         println!("Aborted, nothing was deleted");
@@ -39,7 +43,11 @@ pub fn run(ctx: &Dfm) -> Result<()> {
 
     let pruned = profiles::prune_orphaned_profiles(ctx).wrap_err("Delete orphaned profiles")?;
     for profile in &pruned {
-        println!("   Deleted {} ({})", profile.name, profile.directory.display());
+        println!(
+            "   Deleted {} ({})",
+            profile.name,
+            profile.directory.display()
+        );
     }
     println!("{}", green("Prune complete"));
     Ok(())
