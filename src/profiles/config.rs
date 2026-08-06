@@ -100,3 +100,148 @@ impl ProfileConfig {
         Ok(true)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_config_is_empty_and_versioned() {
+        let config = ProfileConfig::default();
+        assert_eq!(config.version, "1.0.0");
+        assert!(config.profiles.is_empty());
+    }
+
+    #[test]
+    fn create_profile_inserts_definition() {
+        let mut config = ProfileConfig::default();
+        config.create_profile("work", Some("work laptop".to_string()));
+
+        let profile = config.get_profile("work").unwrap();
+        assert_eq!(profile.description, Some("work laptop".to_string()));
+    }
+
+    #[test]
+    fn create_profile_overwrites_existing() {
+        let mut config = ProfileConfig::default();
+        config.create_profile("work", Some("first".to_string()));
+        config.create_profile("work", Some("second".to_string()));
+
+        assert_eq!(
+            config.get_profile("work").unwrap().description,
+            Some("second".to_string())
+        );
+    }
+
+    #[test]
+    fn delete_profile_removes_existing_returns_true() {
+        let mut config = ProfileConfig::default();
+        config.create_profile("work", None);
+
+        assert!(config.delete_profile("work"));
+        assert!(!config.profile_exists("work"));
+    }
+
+    #[test]
+    fn delete_profile_missing_returns_false() {
+        let mut config = ProfileConfig::default();
+        assert!(!config.delete_profile("missing"));
+    }
+
+    #[test]
+    fn profile_exists_true_for_known_and_false_for_unknown() {
+        let mut config = ProfileConfig::default();
+        config.create_profile("work", None);
+
+        assert!(config.profile_exists("work"));
+        assert!(!config.profile_exists("personal"));
+    }
+
+    #[test]
+    fn list_profiles_is_sorted_alphabetically() {
+        let mut config = ProfileConfig::default();
+        config.create_profile("zeta", None);
+        config.create_profile("alpha", None);
+        config.create_profile("mid", None);
+
+        assert_eq!(config.list_profiles(), vec!["alpha", "mid", "zeta"]);
+    }
+
+    #[test]
+    fn load_missing_file_returns_err() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("does-not-exist.json");
+        assert!(ProfileConfig::load(&path).is_err());
+    }
+
+    #[test]
+    fn load_or_default_returns_default_when_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        let config = ProfileConfig::load_or_default(&ctx);
+        assert!(config.profiles.is_empty());
+    }
+
+    #[test]
+    fn save_load_round_trip() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("nested").join("profiles.json");
+
+        let mut config = ProfileConfig::default();
+        config.create_profile("work", Some("work laptop".to_string()));
+        config.create_profile("personal", None);
+        config.save(&path).unwrap();
+
+        let loaded = ProfileConfig::load(&path).unwrap();
+        assert_eq!(loaded.version, config.version);
+        assert_eq!(loaded.list_profiles(), config.list_profiles());
+        assert_eq!(
+            loaded.get_profile("work").unwrap().description,
+            Some("work laptop".to_string())
+        );
+    }
+
+    #[test]
+    fn save_writes_profiles_sorted_by_name_as_pretty_json() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("profiles.json");
+
+        let mut config = ProfileConfig::default();
+        config.create_profile("zeta", None);
+        config.create_profile("alpha", None);
+        config.save(&path).unwrap();
+
+        let content = fs::read_to_string(&path).unwrap();
+        assert!(content.contains('\n'), "expected pretty-printed JSON");
+
+        let alpha_pos = content.find("\"alpha\"").unwrap();
+        let zeta_pos = content.find("\"zeta\"").unwrap();
+        assert!(alpha_pos < zeta_pos);
+    }
+
+    #[test]
+    fn save_default_if_missing_creates_file_when_absent() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+
+        let created = ProfileConfig::save_default_if_missing(&ctx).unwrap();
+        assert!(created);
+        assert!(ctx.profiles_config_path().exists());
+    }
+
+    #[test]
+    fn save_default_if_missing_leaves_existing_file_untouched() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        let path = ctx.profiles_config_path();
+
+        let mut config = ProfileConfig::default();
+        config.create_profile("work", None);
+        config.save(&path).unwrap();
+        let original_content = fs::read_to_string(&path).unwrap();
+
+        let created = ProfileConfig::save_default_if_missing(&ctx).unwrap();
+        assert!(!created);
+        assert_eq!(fs::read_to_string(&path).unwrap(), original_content);
+    }
+}
