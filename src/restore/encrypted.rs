@@ -333,10 +333,7 @@ mod tests {
 
         assert_eq!(report.succeeded(), 1);
         assert_eq!(fs::read(target.join("id_rsa")).unwrap(), b"private key");
-        assert_eq!(
-            fs::read(target.join("id_rsa.pub")).unwrap(),
-            b"public key"
-        );
+        assert_eq!(fs::read(target.join("id_rsa.pub")).unwrap(), b"public key");
     }
 
     #[test]
