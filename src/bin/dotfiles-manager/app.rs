@@ -8,7 +8,7 @@ use clap::{CommandFactory, Parser};
 use color_eyre::eyre::Result;
 use dotfiles_manager::Dfm;
 
-use crate::cli::{Cli, Command};
+use self::cli::{Cli, Command};
 
 /// Parse CLI args and dispatch to the matching command handler.
 pub fn run() -> Result<()> {
