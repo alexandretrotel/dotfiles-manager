@@ -28,6 +28,12 @@ pub enum Error {
     #[error("no git repository found in {}", path.display())]
     NoGitRepository { path: PathBuf },
 
+    #[error("{} already exists and is not empty", path.display())]
+    DataDirAlreadyExists { path: PathBuf },
+
+    #[error("'{0}' is not a valid GitHub repo; use a URL or `owner/repo`")]
+    InvalidRepoSpec(String),
+
     #[error("profile '{0}' does not exist")]
     ProfileNotFound(String),
 

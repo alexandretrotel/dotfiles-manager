@@ -18,6 +18,7 @@ fn main() -> Result<()> {
     let ctx = Dfm::new()?;
 
     match cli.command {
+        Some(Command::Link(args)) => commands::link::run(&ctx, args),
         Some(Command::Backup(args)) => commands::backup::run(&ctx, args),
         Some(Command::Restore(args)) => commands::restore::run(&ctx, args),
         Some(Command::Use(args)) => commands::r#use::run(&ctx, args),

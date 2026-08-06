@@ -10,6 +10,14 @@ At a high level, dotfiles-manager helps you manage these configurations, keep th
 
 ## Quick Start
 
+Setting up a new machine? Clone your existing dotfiles repo and restore in one step:
+
+```bash
+dfm link owner/repo
+```
+
+Otherwise:
+
 ```bash
 dfm backup
 dfm restore
@@ -27,6 +35,7 @@ dfm use work
 
 | Command   | What it does                                                             |
 | --------- | ------------------------------------------------------------------------- |
+| `link`    | Clone a dotfiles repo into `~/.dfm` and restore it (new machine setup)    |
 | `backup`  | Copy tracked configs into `~/.dfm/backup/`                                |
 | `restore` | Restore configs from backup                                               |
 | `doctor`  | Check registry files and config drift                                     |

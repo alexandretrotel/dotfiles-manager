@@ -13,6 +13,11 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Command {
+    #[command(
+        about = "Clone a dotfiles repo into ~/.dfm and restore it (onboard a new machine)"
+    )]
+    Link(LinkArgs),
+
     #[command(about = "Backup system configurations and user data to a safe location")]
     Backup(BackupArgs),
 
@@ -64,6 +69,22 @@ pub struct BackupArgs {
     #[arg(
         long,
         help = "Skip encrypted configs backup (will not prompt for password)"
+    )]
+    pub skip_encrypted: bool,
+    #[arg(
+        long,
+        help = "Always prompt for the encryption password instead of using the one stored in the system keychain"
+    )]
+    pub ask_password: bool,
+}
+
+#[derive(Args)]
+pub struct LinkArgs {
+    #[arg(help = "GitHub repo to link: a URL or `owner/repo` shorthand")]
+    pub repo: String,
+    #[arg(
+        long,
+        help = "Skip encrypted configs restore (will not prompt for password)"
     )]
     pub skip_encrypted: bool,
     #[arg(

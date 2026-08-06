@@ -2,31 +2,23 @@
 
 All notable changes to this project are documented in this file.
 
-## Unreleased
-
-### Changed
-- **Breaking:** The crate, binaries, and repository have been renamed from `dotfm` to `dotfiles-manager`. Install with `cargo install dotfiles-manager`; the CLI ships two binaries, `dotfiles-manager` and the shorter alias `dfm`.
-- **Breaking:** The data directory moved from `~/.dotfm` to `~/.dfm`. Existing users must move it manually: `mv ~/.dotfm ~/.dfm`.
-- **Breaking:** The encrypted bundle filename changed from `dotfm-encrypted-bundle.age` to `dfm-encrypted-bundle.age`. Rename the file inside your backup directory before running `dfm restore`.
-- **Breaking:** The system keychain service name changed from `dotfm` to `dotfiles-manager`. Re-save your encryption password with `dfm secret set`.
-- **Breaking:** The profile override environment variable was renamed from `DOTFM_PROFILE` to `DFM_PROFILE`.
-
 ## v1.0.0
 
-> **Note:** Versioning restarts at 1.0.0 following the rename from `mntn` to `dotfm`. This is not a downgrade — it is a fresh start for the `dotfm` crate name. The previous `mntn` history (up through v5.0.0) is preserved below for reference.
+> **Note:** Versioning restarts at 1.0.0 following the rename from `mntn` to `dotfiles-manager`. This is not a downgrade — it is a fresh start for the `dotfiles-manager` crate name. The previous `mntn` history (up through v5.0.0) is preserved below for reference.
 
 ### Added
-- `dotfm` is now usable as a library: operations live in `dotfm::backup`, `dotfm::restore`, `dotfm::sync`, `dotfm::git`, `dotfm::doctor`, `dotfm::profiles`, `dotfm::keyring`, `dotfm::encryption`, and `dotfm::registry`, take a `Dotfm` context (custom root supported via `Dotfm::with_root`), and return report structs instead of printing. The CLI is a thin binary behind the default `cli` feature; depend on the library with `default-features = false`.
+- `dotfiles-manager` is now usable as a library: operations live in `dotfiles_manager::backup`, `dotfiles_manager::restore`, `dotfiles_manager::sync`, `dotfiles_manager::git`, `dotfiles_manager::doctor`, `dotfiles_manager::profiles`, `dotfiles_manager::keyring`, `dotfiles_manager::encryption`, and `dotfiles_manager::registry`, take a `Dfm` context (custom root supported via `Dfm::with_root`), and return report structs instead of printing. The CLI ships two binaries, `dotfiles-manager` and the shorter alias `dfm`, behind the default `cli` feature; depend on the library with `default-features = false`.
+- `dfm link <repo>` clones a dotfiles repo (URL or `owner/repo`) into `~/.dfm` and restores it in one step — the command to run when setting up a new machine.
 
 ### Changed
-- Directory sync (`dotfm backup`, `dotfm restore`) no longer shells out to `rsync`. Mirroring is now done natively in Rust, so `rsync` is no longer a required dependency on any platform.
+- Directory sync (`dfm backup`, `dfm restore`) no longer shells out to `rsync`. Mirroring is now done natively in Rust, so `rsync` is no longer a required dependency on any platform.
 - The default config registry no longer includes entries for Ghostty, Vim, VS Code (settings and keybindings), Zed, or Git config (and Ghostty's macOS-specific path logic was removed). The default package registry no longer includes entries for Homebrew casks, pnpm, Bun, Deno, or pip. Existing registry files are unaffected.
-- **Breaking:** The crate, binary, and repository have been renamed from `mntn` to `dotfm`. Install with `cargo install dotfm` and invoke the CLI as `dotfm`.
-- **Breaking:** The data directory moved from `~/.mntn` to `~/.dotfm`. Existing users must move it manually: `mv ~/.mntn ~/.dotfm`.
-- **Breaking:** The encrypted bundle filename changed from `mntn-encrypted-bundle.age` to `dotfm-encrypted-bundle.age`. Rename the file inside your backup directory before running `dotfm restore`.
-- **Breaking:** The system keychain service name changed from `mntn` to `dotfm`. Re-save your encryption password with `dotfm secret set`.
-- **Breaking:** The profile override environment variable was renamed from `MNTN_PROFILE` to `DOTFM_PROFILE`.
-- **Breaking:** Restore and `dotfm doctor` no longer fall back to legacy per-file `<source_path>.age` backups when the encrypted bundle is missing or unreadable. Encrypted restore and validation now depend solely on the `dotfm-encrypted-bundle.age` bundle; run `dotfm backup` to produce one if you still have per-file `.age` backups from before v3.1.0.
+- **Breaking:** The crate, binaries, and repository have been renamed from `mntn` to `dotfiles-manager`. Install with `cargo install dotfiles-manager`; the CLI ships two binaries, `dotfiles-manager` and the shorter alias `dfm`.
+- **Breaking:** The data directory moved from `~/.mntn` to `~/.dfm`. Existing users must move it manually: `mv ~/.mntn ~/.dfm`.
+- **Breaking:** The encrypted bundle filename changed from `mntn-encrypted-bundle.age` to `dfm-encrypted-bundle.age`. Rename the file inside your backup directory before running `dfm restore`.
+- **Breaking:** The system keychain service name changed from `mntn` to `dotfiles-manager`. Re-save your encryption password with `dfm secret set`.
+- **Breaking:** The profile override environment variable was renamed from `MNTN_PROFILE` to `DFM_PROFILE`.
+- **Breaking:** Restore and `dfm doctor` no longer fall back to legacy per-file `<source_path>.age` backups when the encrypted bundle is missing or unreadable. Encrypted restore and validation now depend solely on the `dfm-encrypted-bundle.age` bundle; run `dfm backup` to produce one if you still have per-file `.age` backups from before v3.1.0.
 - Encrypted registry entries may now target directories, not just single files. The whole tree is bundled and restored; previously directories were skipped with "directories are not supported".
 
 ## v4.0.6
