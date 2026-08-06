@@ -3,7 +3,6 @@
 
 mod config;
 mod encrypted;
-mod fs_ops;
 mod package;
 
 use std::fs;

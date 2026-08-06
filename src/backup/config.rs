@@ -1,11 +1,11 @@
 use std::fs;
 use std::path::Path;
 
-use super::fs_ops::{backup_directory, backup_file};
 use crate::context::Dfm;
 use crate::error::{Result, WrapErr};
 use crate::registry::ConfigRegistry;
 use crate::report::{ItemOutcome, SectionReport};
+use crate::utils::fs::{sync_directory, sync_file};
 
 /// Copy every enabled config registry entry into `configs_path`.
 pub(super) fn backup_configs(ctx: &Dfm, configs_path: &Path) -> Result<SectionReport> {
@@ -29,7 +29,7 @@ pub(super) fn backup_configs(ctx: &Dfm, configs_path: &Path) -> Result<SectionRe
             }
 
             if target_path.is_dir() {
-                backup_directory(target_path, &backup_destination).wrap_err_with(|| {
+                sync_directory(target_path, &backup_destination).wrap_err_with(|| {
                     format!(
                         "Copy directory {} -> {}",
                         target_path.display(),
@@ -37,7 +37,7 @@ pub(super) fn backup_configs(ctx: &Dfm, configs_path: &Path) -> Result<SectionRe
                     )
                 })
             } else {
-                backup_file(target_path, &backup_destination).wrap_err_with(|| {
+                sync_file(target_path, &backup_destination).wrap_err_with(|| {
                     format!(
                         "Copy file {} -> {}",
                         target_path.display(),
