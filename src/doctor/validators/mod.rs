@@ -1,11 +1,9 @@
 mod backup_consistency;
-mod layer_resolution;
 mod registry_files;
 
 use age::secrecy::SecretString;
 
 use backup_consistency::BackupConsistencyValidator;
-use layer_resolution::LayerResolutionValidator;
 use registry_files::RegistryFilesValidator;
 
 use crate::context::Dfm;
@@ -29,7 +27,6 @@ impl ValidationSuite {
     pub(crate) fn new(ctx: Dfm, profile: ActiveProfile, password: Option<SecretString>) -> Self {
         let validators: Vec<Box<dyn Validator>> = vec![
             Box::new(RegistryFilesValidator::new(ctx.clone())),
-            Box::new(LayerResolutionValidator::new(ctx.clone(), profile.clone())),
             Box::new(BackupConsistencyValidator::new(ctx, profile, password)),
         ];
         Self { validators }
