@@ -10,8 +10,8 @@ use std::path::Path;
 
 use age::secrecy::SecretString;
 pub use bundle::{
-    collect_dir_tar_entries, create_temp_file, load_tar_member_map, set_private_file_permissions,
-    write_entries_tar,
+    TarEntryRef, TarMemberMap, TarSourceEntry, create_temp_file, enumerate_tar_files,
+    load_tar_files, set_private_file_permissions, write_tar_archive,
 };
 
 use crate::error::{Result, WrapErr};

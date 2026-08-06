@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
 
@@ -6,7 +5,7 @@ use age::secrecy::SecretString;
 
 use crate::context::Dfm;
 use crate::encryption::{
-    create_temp_file, decrypt_file, load_tar_member_map, set_private_file_permissions,
+    TarMemberMap, create_temp_file, decrypt_file, load_tar_files, set_private_file_permissions,
 };
 use crate::profiles::ActiveProfile;
 use crate::registry::{EncryptedRegistry, EncryptedRegistryEntry};
@@ -63,7 +62,7 @@ pub(super) fn restore_encrypted_configs(
     };
 
     match decrypt_file(&bundle.path, tar_temp.path(), password) {
-        Ok(()) => match load_tar_member_map(tar_temp.path()) {
+        Ok(()) => match load_tar_files(tar_temp.path()) {
             Ok(members) => restore_from_bundle_members(&enabled_entries, &members, &mut report),
             Err(e) => report
                 .warnings
@@ -85,7 +84,7 @@ pub(super) fn restore_encrypted_configs(
 /// prefix is restored as a directory tree.
 fn restore_from_bundle_members(
     enabled_entries: &[(String, EncryptedRegistryEntry)],
-    members: &HashMap<String, Vec<u8>>,
+    members: &TarMemberMap,
     report: &mut SectionReport,
 ) {
     for (id, entry) in enabled_entries {
@@ -134,7 +133,7 @@ fn restore_file(target_path: &Path, contents: &[u8]) -> Result<Option<String>, S
 fn restore_dir(
     target_path: &Path,
     source_prefix: &str,
-    members: &HashMap<String, Vec<u8>>,
+    members: &TarMemberMap,
 ) -> Result<Option<String>, String> {
     let prefix = format!("{source_prefix}/");
     let mut written = 0usize;
@@ -179,7 +178,7 @@ fn restore_dir(
 mod tests {
     use super::*;
     use crate::context::ENCRYPTED_BUNDLE_FILE;
-    use crate::encryption::{encrypt_file, write_entries_tar};
+    use crate::encryption::{encrypt_file, write_tar_archive};
     use std::path::PathBuf;
 
     fn entry(source_path: &str, target_path: PathBuf) -> EncryptedRegistryEntry {
@@ -217,7 +216,7 @@ mod tests {
         let bundle_dir = profile.encrypted_backup_path(&ctx);
         fs::create_dir_all(&bundle_dir).unwrap();
         let tar_temp = create_temp_file("test-bundle").unwrap();
-        write_entries_tar(tar_temp.path(), &[("secret.txt", source_file.as_path())]).unwrap();
+        write_tar_archive(tar_temp.path(), &[("secret.txt", source_file.as_path())]).unwrap();
         encrypt_file(
             tar_temp.path(),
             &bundle_dir.join(ENCRYPTED_BUNDLE_FILE),
@@ -288,7 +287,7 @@ mod tests {
     fn restore_dir_errors_when_prefix_not_in_bundle() {
         let dir = tempfile::tempdir().unwrap();
         let target = dir.path().join("target_dir");
-        let members: HashMap<String, Vec<u8>> = HashMap::new();
+        let members: TarMemberMap = HashMap::new();
 
         let err = restore_dir(&target, "missing-prefix", &members).unwrap_err();
         assert_eq!(err, "not in encrypted bundle");
@@ -379,7 +378,7 @@ mod tests {
         let bundle_dir = profile.encrypted_backup_path(&ctx);
         fs::create_dir_all(&bundle_dir).unwrap();
         let tar_temp = create_temp_file("test-bundle-dir").unwrap();
-        write_entries_tar(
+        write_tar_archive(
             tar_temp.path(),
             &[
                 ("ssh/keys/id_rsa", source_a.as_path()),
@@ -422,7 +421,7 @@ mod tests {
         let bundle_dir = profile.encrypted_backup_path(&ctx);
         fs::create_dir_all(&bundle_dir).unwrap();
         let tar_temp = create_temp_file("test-bundle-missing-member").unwrap();
-        write_entries_tar(tar_temp.path(), &[("other.txt", other_source.as_path())]).unwrap();
+        write_tar_archive(tar_temp.path(), &[("other.txt", other_source.as_path())]).unwrap();
         encrypt_file(
             tar_temp.path(),
             &bundle_dir.join(ENCRYPTED_BUNDLE_FILE),

@@ -1,19 +1,20 @@
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use age::secrecy::SecretString;
 use sha2::{Digest, Sha256};
 
 use crate::context::{Dfm, ENCRYPTED_BUNDLE_FILE};
 use crate::encryption::{
-    collect_dir_tar_entries, create_temp_file, encrypt_file, write_entries_tar,
+    TarEntryRef, TarSourceEntry, create_temp_file, encrypt_file, enumerate_tar_files,
+    write_tar_archive,
 };
 use crate::error::{Result, WrapErr};
 use crate::registry::EncryptedRegistry;
 use crate::report::{ItemOutcome, SectionReport};
 
 /// One registry entry's queued tar members: `(id, label, [(archive name, source file)])`.
-type ArchiveEntry = (String, String, Vec<(String, PathBuf)>);
+type ArchiveEntry = (String, String, Vec<TarSourceEntry>);
 
 /// Name of the plaintext hash sidecar written next to the encrypted bundle.
 /// `age` encryption is non-deterministic (fresh salt/nonce every run), so
@@ -59,7 +60,7 @@ pub(super) fn backup_encrypted_configs(
         }
 
         let members = if entry.target_path.is_dir() {
-            match collect_dir_tar_entries(&entry.source_path, &entry.target_path) {
+            match enumerate_tar_files(&entry.source_path, &entry.target_path) {
                 Ok(members) => members,
                 Err(e) => {
                     report.outcomes.push(ItemOutcome::skipped(
@@ -88,14 +89,14 @@ pub(super) fn backup_encrypted_configs(
         return Ok(report);
     }
 
-    let tar_refs: Vec<(&str, &Path)> = to_archive
+    let tar_refs: Vec<TarEntryRef> = to_archive
         .iter()
         .flat_map(|(_, _, members)| members.iter())
         .map(|(name, path)| (name.as_str(), path.as_path()))
         .collect();
 
     let tar_temp = create_temp_file("enc-bundle-tar").wrap_err("Create temporary tar path")?;
-    write_entries_tar(tar_temp.path(), &tar_refs)?;
+    write_tar_archive(tar_temp.path(), &tar_refs)?;
     let tar_hash = hash_file(tar_temp.path())?;
 
     let previous_hash = fs::read_to_string(&hash_destination).ok();
@@ -121,7 +122,7 @@ pub(super) fn backup_encrypted_configs(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::encryption::{decrypt_file, load_tar_member_map};
+    use crate::encryption::{decrypt_file, load_tar_files};
     use crate::registry::EncryptedRegistryEntry;
     use std::collections::HashMap;
 
@@ -166,7 +167,7 @@ mod tests {
 
         let tar_temp = create_temp_file("test-decrypt").unwrap();
         decrypt_file(&bundle, tar_temp.path(), &password).unwrap();
-        let members = load_tar_member_map(tar_temp.path()).unwrap();
+        let members = load_tar_files(tar_temp.path()).unwrap();
         assert_eq!(members.get("secret.txt").unwrap(), b"top secret");
     }
 
@@ -221,7 +222,7 @@ mod tests {
 
         let tar_temp = create_temp_file("test-decrypt-v2").unwrap();
         decrypt_file(&bundle, tar_temp.path(), &password).unwrap();
-        let members = load_tar_member_map(tar_temp.path()).unwrap();
+        let members = load_tar_files(tar_temp.path()).unwrap();
         assert_eq!(members.get("secret.txt").unwrap(), b"top secret v2");
     }
 
@@ -294,7 +295,7 @@ mod tests {
         let bundle = encrypted_backup_path.join(ENCRYPTED_BUNDLE_FILE);
         let tar_temp = create_temp_file("test-decrypt-dir").unwrap();
         decrypt_file(&bundle, tar_temp.path(), &password).unwrap();
-        let members = load_tar_member_map(tar_temp.path()).unwrap();
+        let members = load_tar_files(tar_temp.path()).unwrap();
         assert_eq!(members.get("secrets/a.txt").unwrap(), b"a");
         assert_eq!(members.get("secrets/nested/b.txt").unwrap(), b"b");
     }

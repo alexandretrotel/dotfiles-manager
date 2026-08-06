@@ -8,7 +8,7 @@ use super::Validator;
 use crate::context::Dfm;
 use crate::doctor::report::ValidationError;
 use crate::encryption::{
-    collect_dir_tar_entries, create_temp_file, decrypt_file, load_tar_member_map,
+    TarEntryRef, TarMemberMap, create_temp_file, decrypt_file, enumerate_tar_files, load_tar_files,
 };
 use crate::profiles::ActiveProfile;
 use crate::registry::{
@@ -191,7 +191,7 @@ fn check_plain_dir_entry(
     backup_dir: &Path,
     errors: &mut Vec<ValidationError>,
 ) {
-    let current_entries = match collect_dir_tar_entries(&entry.source_path, &entry.target_path) {
+    let current_entries = match enumerate_tar_files(&entry.source_path, &entry.target_path) {
         Ok(entries) => entries,
         Err(e) => {
             errors.push(ValidationError::warning(format!(
@@ -204,7 +204,7 @@ fn check_plain_dir_entry(
             return;
         }
     };
-    let backup_entries = match collect_dir_tar_entries(&entry.source_path, backup_dir) {
+    let backup_entries = match enumerate_tar_files(&entry.source_path, backup_dir) {
         Ok(entries) => entries,
         Err(e) => {
             errors.push(ValidationError::warning(format!(
@@ -306,7 +306,7 @@ fn check_bundle(
         return;
     }
 
-    let members = match load_tar_member_map(tar_temp.path()) {
+    let members = match load_tar_files(tar_temp.path()) {
         Ok(members) => members,
         Err(e) => {
             errors.push(ValidationError::warning(format!(
@@ -358,10 +358,10 @@ fn check_bundle(
 fn check_dir_entry(
     id: &str,
     entry: &EncryptedRegistryEntry,
-    members: &HashMap<String, Vec<u8>>,
+    members: &TarMemberMap,
     errors: &mut Vec<ValidationError>,
 ) {
-    let current_entries = match collect_dir_tar_entries(&entry.source_path, &entry.target_path) {
+    let current_entries = match enumerate_tar_files(&entry.source_path, &entry.target_path) {
         Ok(entries) => entries,
         Err(e) => {
             errors.push(ValidationError::warning(format!(
@@ -429,7 +429,7 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::context::{Dfm, ENCRYPTED_BUNDLE_FILE};
-    use crate::encryption::{encrypt_file, write_entries_tar};
+    use crate::encryption::{encrypt_file, write_tar_archive};
     use crate::registry::EncryptedRegistry;
 
     use super::*;
@@ -765,7 +765,7 @@ mod tests {
             .unwrap();
 
         let tar_path = dir.path().join("bundle.tar");
-        write_entries_tar(&tar_path, &[("ssh/config", &target_path)]).unwrap();
+        write_tar_archive(&tar_path, &[("ssh/config", &target_path)]).unwrap();
 
         let bundle_path = ctx.encrypted_common_dir().join(ENCRYPTED_BUNDLE_FILE);
         let correct_password = SecretString::from("correct horse battery staple".to_string());
@@ -815,11 +815,11 @@ mod tests {
     fn write_encrypted_bundle(
         ctx: &Dfm,
         profile: &ActiveProfile,
-        entries: &[(&str, &Path)],
+        entries: &[TarEntryRef],
         password: &SecretString,
     ) {
         let tar_temp = create_temp_file("test-bundle-build").unwrap();
-        write_entries_tar(tar_temp.path(), entries).unwrap();
+        write_tar_archive(tar_temp.path(), entries).unwrap();
         let bundle_dir = profile.encrypted_backup_path(ctx);
         fs::create_dir_all(&bundle_dir).unwrap();
         encrypt_file(
