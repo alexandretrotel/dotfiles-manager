@@ -53,7 +53,79 @@ fn resolve_clone_url(repo: &str) -> Result<String> {
 
 #[cfg(test)]
 mod tests {
+    use std::process::Command;
+
     use super::*;
+
+    fn init_bare_repo_with_a_commit(dir: &std::path::Path) {
+        let bare = dir.join("bare.git");
+        Command::new("git")
+            .args(["init", "--bare", "-q"])
+            .arg(&bare)
+            .status()
+            .unwrap();
+
+        let work = dir.join("work");
+        Command::new("git")
+            .args(["clone", "-q"])
+            .arg(&bare)
+            .arg(&work)
+            .status()
+            .unwrap();
+        fs::write(work.join("README.md"), "hello").unwrap();
+        Command::new("git")
+            .args(["-C"])
+            .arg(&work)
+            .args(["add", "."])
+            .status()
+            .unwrap();
+        Command::new("git")
+            .args(["-C"])
+            .arg(&work)
+            .args(["-c", "user.email=test@test.com", "-c", "user.name=test"])
+            .args(["commit", "-q", "-m", "init"])
+            .status()
+            .unwrap();
+        Command::new("git")
+            .args(["-C"])
+            .arg(&work)
+            .args(["push", "-q", "origin", "HEAD"])
+            .status()
+            .unwrap();
+    }
+
+    #[test]
+    fn run_clones_a_repo_into_the_dfm_root() {
+        let dir = tempfile::tempdir().unwrap();
+        init_bare_repo_with_a_commit(dir.path());
+
+        let root = dir.path().join("dfm-root");
+        let ctx = Dfm::with_root(&root);
+        let url = format!("file://{}", dir.path().join("bare.git").display());
+
+        let report = run(&ctx, &url).unwrap();
+
+        assert_eq!(report.url, url);
+        assert!(root.join("README.md").exists());
+        assert!(root.join(".git").is_dir());
+    }
+
+    #[test]
+    fn run_errors_when_root_already_exists_and_is_not_empty() {
+        let dir = tempfile::tempdir().unwrap();
+        init_bare_repo_with_a_commit(dir.path());
+
+        let root = dir.path().join("dfm-root");
+        fs::create_dir_all(&root).unwrap();
+        fs::write(root.join("existing.txt"), "already here").unwrap();
+
+        let ctx = Dfm::with_root(&root);
+        let url = format!("file://{}", dir.path().join("bare.git").display());
+
+        let err = run(&ctx, &url).unwrap_err();
+
+        assert!(matches!(err, Error::DataDirAlreadyExists { .. }));
+    }
 
     #[test]
     fn shorthand_resolves_to_https_github_url() {

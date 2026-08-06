@@ -89,3 +89,96 @@ fn run_single_package_backup(
         result,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    fn entry(command: &str, args: Vec<&str>, output_file: &str) -> PackageRegistryEntry {
+        PackageRegistryEntry {
+            name: command.to_string(),
+            description: None,
+            enabled: true,
+            command: command.to_string(),
+            args: args.into_iter().map(String::from).collect(),
+            output_file: output_file.to_string(),
+            platforms: None,
+        }
+    }
+
+    fn save_registry(ctx: &Dfm, entries: HashMap<String, PackageRegistryEntry>) {
+        let registry = PackageRegistry {
+            version: "1.0.0".to_string(),
+            entries,
+        };
+        registry.save(&ctx.package_registry_path()).unwrap();
+    }
+
+    #[test]
+    fn writes_exported_package_list_to_output_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path().join("dfm"));
+
+        let mut entries = HashMap::new();
+        entries.insert(
+            "fake".to_string(),
+            entry("echo", vec!["package-a\npackage-b"], "fake.txt"),
+        );
+        save_registry(&ctx, entries);
+
+        let packages_path = dir.path().join("packages");
+        fs::create_dir_all(&packages_path).unwrap();
+
+        let report = backup_packages(&ctx, &packages_path).unwrap();
+
+        assert_eq!(report.succeeded(), 1);
+        let content = fs::read_to_string(packages_path.join("fake.txt")).unwrap();
+        assert_eq!(content, "package-a\npackage-b\n");
+    }
+
+    #[test]
+    fn missing_package_manager_command_is_skipped_not_fatal() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path().join("dfm"));
+
+        let mut entries = HashMap::new();
+        entries.insert(
+            "ghost".to_string(),
+            entry("definitely-not-a-real-command-xyz", vec![], "ghost.txt"),
+        );
+        save_registry(&ctx, entries);
+
+        let packages_path = dir.path().join("packages");
+        fs::create_dir_all(&packages_path).unwrap();
+
+        let report = backup_packages(&ctx, &packages_path).unwrap();
+
+        assert_eq!(report.succeeded(), 0);
+        assert_eq!(report.skipped(), 1);
+        assert!(!packages_path.join("ghost.txt").exists());
+    }
+
+    #[test]
+    fn platform_incompatible_entries_are_excluded_from_report() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path().join("dfm"));
+
+        let mut entries = HashMap::new();
+        entries.insert(
+            "wrong_platform".to_string(),
+            PackageRegistryEntry {
+                platforms: Some(vec!["definitely-not-this-os".to_string()]),
+                ..entry("echo", vec!["hi"], "wrong.txt")
+            },
+        );
+        save_registry(&ctx, entries);
+
+        let packages_path = dir.path().join("packages");
+        fs::create_dir_all(&packages_path).unwrap();
+
+        let report = backup_packages(&ctx, &packages_path).unwrap();
+
+        assert!(report.outcomes.is_empty());
+    }
+}

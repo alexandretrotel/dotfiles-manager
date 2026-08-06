@@ -89,3 +89,105 @@ pub(super) fn backup_encrypted_configs(
 
     Ok(report)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::encryption::{decrypt_file, load_tar_member_map};
+    use crate::registry::EncryptedRegistryEntry;
+    use std::collections::HashMap;
+
+    fn entry(source_path: &str, target_path: PathBuf) -> EncryptedRegistryEntry {
+        EncryptedRegistryEntry {
+            name: source_path.to_string(),
+            description: None,
+            enabled: true,
+            source_path: source_path.to_string(),
+            target_path,
+        }
+    }
+
+    fn save_registry(ctx: &Dfm, entries: HashMap<String, EncryptedRegistryEntry>) {
+        let registry = EncryptedRegistry {
+            version: "1.0.0".to_string(),
+            entries,
+        };
+        registry.save(&ctx.encrypted_registry_path()).unwrap();
+    }
+
+    #[test]
+    fn backs_up_a_file_entry_into_encrypted_bundle() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path().join("dfm"));
+        let target = dir.path().join("secret.txt");
+        fs::write(&target, b"top secret").unwrap();
+
+        let mut entries = HashMap::new();
+        entries.insert("secret".to_string(), entry("secret.txt", target));
+        save_registry(&ctx, entries);
+
+        let encrypted_backup_path = dir.path().join("encrypted");
+        fs::create_dir_all(&encrypted_backup_path).unwrap();
+        let password = SecretString::from("test password".to_string());
+
+        let report = backup_encrypted_configs(&ctx, &encrypted_backup_path, &password).unwrap();
+
+        assert_eq!(report.succeeded(), 1);
+        let bundle = encrypted_backup_path.join(ENCRYPTED_BUNDLE_FILE);
+        assert!(bundle.exists());
+
+        let tar_temp = create_temp_file("test-decrypt").unwrap();
+        decrypt_file(&bundle, tar_temp.path(), &password).unwrap();
+        let members = load_tar_member_map(tar_temp.path()).unwrap();
+        assert_eq!(members.get("secret.txt").unwrap(), b"top secret");
+    }
+
+    #[test]
+    fn missing_target_path_is_skipped_and_no_bundle_written() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path().join("dfm"));
+        let missing = dir.path().join("nope.txt");
+
+        let mut entries = HashMap::new();
+        entries.insert("missing".to_string(), entry("nope.txt", missing));
+        save_registry(&ctx, entries);
+
+        let encrypted_backup_path = dir.path().join("encrypted");
+        fs::create_dir_all(&encrypted_backup_path).unwrap();
+        let password = SecretString::from("pw".to_string());
+
+        let report = backup_encrypted_configs(&ctx, &encrypted_backup_path, &password).unwrap();
+
+        assert_eq!(report.succeeded(), 0);
+        assert_eq!(report.skipped(), 1);
+        assert!(!encrypted_backup_path.join(ENCRYPTED_BUNDLE_FILE).exists());
+    }
+
+    #[test]
+    fn backs_up_a_directory_entry_with_nested_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path().join("dfm"));
+        let target = dir.path().join("secrets_dir");
+        fs::create_dir_all(target.join("nested")).unwrap();
+        fs::write(target.join("a.txt"), b"a").unwrap();
+        fs::write(target.join("nested/b.txt"), b"b").unwrap();
+
+        let mut entries = HashMap::new();
+        entries.insert("dir".to_string(), entry("secrets", target));
+        save_registry(&ctx, entries);
+
+        let encrypted_backup_path = dir.path().join("encrypted");
+        fs::create_dir_all(&encrypted_backup_path).unwrap();
+        let password = SecretString::from("pw".to_string());
+
+        let report = backup_encrypted_configs(&ctx, &encrypted_backup_path, &password).unwrap();
+        assert_eq!(report.succeeded(), 1);
+
+        let bundle = encrypted_backup_path.join(ENCRYPTED_BUNDLE_FILE);
+        let tar_temp = create_temp_file("test-decrypt-dir").unwrap();
+        decrypt_file(&bundle, tar_temp.path(), &password).unwrap();
+        let members = load_tar_member_map(tar_temp.path()).unwrap();
+        assert_eq!(members.get("secrets/a.txt").unwrap(), b"a");
+        assert_eq!(members.get("secrets/nested/b.txt").unwrap(), b"b");
+    }
+}

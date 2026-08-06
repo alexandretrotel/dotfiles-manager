@@ -165,3 +165,182 @@ pub enum ProfileActions {
         name: String,
     },
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[test]
+    fn doctor_with_flags_sets_them_true() {
+        let cli = Cli::try_parse_from(["dfm", "doctor", "--fix", "--skip-encrypted"]).unwrap();
+        match cli.command {
+            Some(Command::Doctor(args)) => {
+                assert!(args.fix);
+                assert!(args.skip_encrypted);
+                assert!(!args.ask_password);
+            }
+            _ => panic!("expected Doctor command"),
+        }
+    }
+
+    #[test]
+    fn doctor_with_no_flags_defaults_false() {
+        let cli = Cli::try_parse_from(["dfm", "doctor"]).unwrap();
+        match cli.command {
+            Some(Command::Doctor(args)) => {
+                assert!(!args.fix);
+                assert!(!args.skip_encrypted);
+                assert!(!args.ask_password);
+            }
+            _ => panic!("expected Doctor command"),
+        }
+    }
+
+    #[test]
+    fn link_requires_repo_argument() {
+        let result = Cli::try_parse_from(["dfm", "link"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn link_parses_repo_argument() {
+        let cli = Cli::try_parse_from(["dfm", "link", "owner/repo"]).unwrap();
+        match cli.command {
+            Some(Command::Link(args)) => {
+                assert_eq!(args.repo, "owner/repo");
+                assert!(!args.skip_encrypted);
+                assert!(!args.ask_password);
+            }
+            _ => panic!("expected Link command"),
+        }
+    }
+
+    #[test]
+    fn use_requires_profile_argument() {
+        let result = Cli::try_parse_from(["dfm", "use"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn use_parses_profile_argument() {
+        let cli = Cli::try_parse_from(["dfm", "use", "work"]).unwrap();
+        match cli.command {
+            Some(Command::Use(args)) => assert_eq!(args.profile, "work"),
+            _ => panic!("expected Use command"),
+        }
+    }
+
+    #[test]
+    fn git_requires_at_least_one_arg() {
+        let result = Cli::try_parse_from(["dfm", "git"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn git_passes_through_trailing_hyphen_values() {
+        let cli = Cli::try_parse_from(["dfm", "git", "commit", "-m", "msg"]).unwrap();
+        match cli.command {
+            Some(Command::Git(args)) => {
+                assert_eq!(args.args, vec!["commit", "-m", "msg"]);
+            }
+            _ => panic!("expected Git command"),
+        }
+    }
+
+    #[test]
+    fn sync_message_defaults_to_none() {
+        let cli = Cli::try_parse_from(["dfm", "sync"]).unwrap();
+        match cli.command {
+            Some(Command::Sync(args)) => assert_eq!(args.message, None),
+            _ => panic!("expected Sync command"),
+        }
+    }
+
+    #[test]
+    fn sync_parses_short_message_flag() {
+        let cli = Cli::try_parse_from(["dfm", "sync", "-m", "chore: update"]).unwrap();
+        match cli.command {
+            Some(Command::Sync(args)) => {
+                assert_eq!(args.message, Some("chore: update".to_string()));
+            }
+            _ => panic!("expected Sync command"),
+        }
+    }
+
+    #[test]
+    fn backup_parses_profile_alias() {
+        let cli = Cli::try_parse_from(["dfm", "backup", "-n", "personal"]).unwrap();
+        match cli.command {
+            Some(Command::Backup(args)) => {
+                assert_eq!(args.profile, Some("personal".to_string()));
+            }
+            _ => panic!("expected Backup command"),
+        }
+    }
+
+    #[test]
+    fn profile_create_parses_name_and_description() {
+        let cli = Cli::try_parse_from([
+            "dfm",
+            "profile",
+            "create",
+            "work",
+            "--description",
+            "work machine",
+        ])
+        .unwrap();
+        match cli.command {
+            Some(Command::Profile(args)) => match args.action {
+                Some(ProfileActions::Create { name, description }) => {
+                    assert_eq!(name, "work");
+                    assert_eq!(description, Some("work machine".to_string()));
+                }
+                _ => panic!("expected Create action"),
+            },
+            _ => panic!("expected Profile command"),
+        }
+    }
+
+    #[test]
+    fn profile_delete_requires_name() {
+        let result = Cli::try_parse_from(["dfm", "profile", "delete"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn profile_with_no_action_is_none() {
+        let cli = Cli::try_parse_from(["dfm", "profile"]).unwrap();
+        match cli.command {
+            Some(Command::Profile(args)) => assert!(args.action.is_none()),
+            _ => panic!("expected Profile command"),
+        }
+    }
+
+    #[test]
+    fn secret_set_and_delete_parse() {
+        let cli = Cli::try_parse_from(["dfm", "secret", "set"]).unwrap();
+        match cli.command {
+            Some(Command::Secret { action }) => assert!(matches!(action, SecretActions::Set)),
+            _ => panic!("expected Secret command"),
+        }
+
+        let cli = Cli::try_parse_from(["dfm", "secret", "delete"]).unwrap();
+        match cli.command {
+            Some(Command::Secret { action }) => assert!(matches!(action, SecretActions::Delete)),
+            _ => panic!("expected Secret command"),
+        }
+    }
+
+    #[test]
+    fn no_subcommand_is_none() {
+        let cli = Cli::try_parse_from(["dfm"]).unwrap();
+        assert!(cli.command.is_none());
+    }
+
+    #[test]
+    fn unknown_subcommand_is_err() {
+        let result = Cli::try_parse_from(["dfm", "not-a-command"]);
+        assert!(result.is_err());
+    }
+}

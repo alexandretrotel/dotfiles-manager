@@ -59,3 +59,50 @@ impl Default for ConfigRegistry {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_has_expected_version() {
+        let registry = ConfigRegistry::default();
+        assert_eq!(registry.version, "1.0.0");
+    }
+
+    #[test]
+    fn default_includes_bashrc_entry() {
+        let registry = ConfigRegistry::default();
+        let bashrc = registry.entries.get("bashrc").unwrap();
+
+        assert_eq!(bashrc.name, "Bash Configuration");
+        assert_eq!(bashrc.source_path, ".bashrc");
+        assert!(bashrc.enabled);
+        assert_eq!(
+            bashrc.description.as_deref(),
+            Some("Bash shell configuration file")
+        );
+        assert!(bashrc.target_path.ends_with(".bashrc"));
+    }
+
+    #[test]
+    fn default_includes_zshrc_entry() {
+        let registry = ConfigRegistry::default();
+        let zshrc = registry.entries.get("zshrc").unwrap();
+
+        assert_eq!(zshrc.name, "Zsh Configuration");
+        assert_eq!(zshrc.source_path, ".zshrc");
+        assert!(zshrc.enabled);
+        assert_eq!(
+            zshrc.description.as_deref(),
+            Some("Zsh shell configuration file")
+        );
+        assert!(zshrc.target_path.ends_with(".zshrc"));
+    }
+
+    #[test]
+    fn default_has_exactly_two_entries() {
+        let registry = ConfigRegistry::default();
+        assert_eq!(registry.entries.len(), 2);
+    }
+}

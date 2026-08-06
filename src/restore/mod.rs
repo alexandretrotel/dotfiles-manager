@@ -19,10 +19,12 @@ pub struct RestoreReport {
 }
 
 impl RestoreReport {
+    /// Total number of configs (plain and encrypted) restored.
     pub fn restored(&self) -> usize {
         self.configs.succeeded() + self.encrypted.as_ref().map_or(0, |s| s.succeeded())
     }
 
+    /// Total number of configs (plain and encrypted) skipped.
     pub fn skipped(&self) -> usize {
         self.configs.skipped() + self.encrypted.as_ref().map_or(0, |s| s.skipped())
     }
@@ -60,4 +62,128 @@ pub fn run(
         configs,
         encrypted,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::registry::ConfigRegistryEntry;
+    use crate::report::ItemStatus;
+    use std::collections::HashMap;
+    use std::fs;
+
+    fn section_with(outcomes: Vec<ItemOutcome>) -> SectionReport {
+        SectionReport {
+            outcomes,
+            warnings: Vec::new(),
+        }
+    }
+
+    fn done(id: &str) -> ItemOutcome {
+        ItemOutcome {
+            id: id.to_string(),
+            label: id.to_string(),
+            status: ItemStatus::Done { note: None },
+        }
+    }
+
+    fn skipped(id: &str) -> ItemOutcome {
+        ItemOutcome {
+            id: id.to_string(),
+            label: id.to_string(),
+            status: ItemStatus::Skipped {
+                reason: "test".to_string(),
+            },
+        }
+    }
+
+    #[test]
+    fn restored_and_skipped_count_plain_configs_only_when_encrypted_is_none() {
+        let report = RestoreReport {
+            profile: ActiveProfile::common_only(),
+            configs: section_with(vec![done("a"), done("b"), skipped("c")]),
+            encrypted: None,
+        };
+
+        assert_eq!(report.restored(), 2);
+        assert_eq!(report.skipped(), 1);
+    }
+
+    #[test]
+    fn restored_and_skipped_sum_plain_and_encrypted_sections() {
+        let report = RestoreReport {
+            profile: ActiveProfile::common_only(),
+            configs: section_with(vec![done("a"), skipped("b")]),
+            encrypted: Some(section_with(vec![done("c"), done("d"), skipped("e")])),
+        };
+
+        assert_eq!(report.restored(), 3);
+        assert_eq!(report.skipped(), 2);
+    }
+
+    #[test]
+    fn restore_run_restores_a_config_from_the_common_layer() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path().join("dfm"));
+        let profile = ActiveProfile::common_only();
+
+        let backup_file = profile.backup_path(&ctx).join("myfile.txt");
+        fs::create_dir_all(backup_file.parent().unwrap()).unwrap();
+        fs::write(&backup_file, b"backed up content").unwrap();
+
+        let target = dir.path().join("restored/myfile.txt");
+
+        let mut entries = HashMap::new();
+        entries.insert(
+            "myfile".to_string(),
+            ConfigRegistryEntry {
+                name: "My File".to_string(),
+                description: None,
+                enabled: true,
+                source_path: "myfile.txt".to_string(),
+                target_path: target.clone(),
+            },
+        );
+        let registry = ConfigRegistry {
+            version: "1.0.0".to_string(),
+            entries,
+        };
+        registry.save(&ctx.config_registry_path()).unwrap();
+
+        let report = run(&ctx, &profile, None).unwrap();
+
+        assert_eq!(report.restored(), 1);
+        assert!(report.encrypted.is_none());
+        assert_eq!(fs::read(&target).unwrap(), b"backed up content");
+    }
+
+    #[test]
+    fn restore_run_skips_entries_with_no_backup_in_any_layer() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path().join("dfm"));
+        let profile = ActiveProfile::common_only();
+
+        let mut entries = HashMap::new();
+        entries.insert(
+            "ghost".to_string(),
+            ConfigRegistryEntry {
+                name: "Ghost".to_string(),
+                description: None,
+                enabled: true,
+                source_path: "ghost.txt".to_string(),
+                target_path: dir.path().join("ghost-target.txt"),
+            },
+        );
+        let registry = ConfigRegistry {
+            version: "1.0.0".to_string(),
+            entries,
+        };
+        registry.save(&ctx.config_registry_path()).unwrap();
+
+        let report = run(&ctx, &profile, None).unwrap();
+
+        assert_eq!(report.restored(), 0);
+        assert_eq!(report.skipped(), 1);
+        assert!(!dir.path().join("ghost-target.txt").exists());
+    }
 }

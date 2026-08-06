@@ -15,6 +15,7 @@ pub(super) struct RegistryFilesValidator {
 }
 
 impl RegistryFilesValidator {
+    /// Build the validator for `ctx`'s registry files.
     pub(super) fn new(ctx: Dfm) -> Self {
         Self { ctx }
     }
@@ -111,5 +112,149 @@ impl Validator for RegistryFilesValidator {
 
     fn name(&self) -> &str {
         "Registry Files"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use super::*;
+    use crate::context::Dfm;
+    use crate::registry::{ConfigRegistryEntry, PackageRegistryEntry};
+
+    fn config_entry(source_path: &str) -> ConfigRegistryEntry {
+        ConfigRegistryEntry {
+            name: "Test Entry".to_string(),
+            description: None,
+            enabled: true,
+            source_path: source_path.to_string(),
+            target_path: std::path::PathBuf::from("/tmp/does-not-matter"),
+        }
+    }
+
+    #[test]
+    fn name_is_registry_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        assert_eq!(RegistryFilesValidator::new(ctx).name(), "Registry Files");
+    }
+
+    #[test]
+    fn missing_registry_files_produce_info_findings() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        let validator = RegistryFilesValidator::new(ctx);
+
+        let errors = validator.validate();
+
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.severity == crate::doctor::report::Severity::Info
+                    && e.message == "Config registry file not found")
+        );
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.severity == crate::doctor::report::Severity::Info
+                    && e.message == "Package registry file not found")
+        );
+    }
+
+    #[test]
+    fn invalid_config_json_produces_error_finding() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        std::fs::write(ctx.config_registry_path(), "not valid json {").unwrap();
+        let validator = RegistryFilesValidator::new(ctx);
+
+        let errors = validator.validate();
+
+        assert!(errors.iter().any(|e| {
+            e.severity == crate::doctor::report::Severity::Error
+                && e.message.contains("Could not parse config registry")
+        }));
+    }
+
+    #[test]
+    fn valid_config_registry_with_unique_source_paths_produces_no_errors() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+
+        let mut entries = HashMap::new();
+        entries.insert("bashrc".to_string(), config_entry(".bashrc"));
+        entries.insert("zshrc".to_string(), config_entry(".zshrc"));
+        let registry = ConfigRegistry {
+            version: "1.0.0".to_string(),
+            entries,
+        };
+        registry.save(&ctx.config_registry_path()).unwrap();
+
+        let validator = RegistryFilesValidator::new(ctx);
+        let errors = validator.validate();
+
+        assert!(
+            !errors
+                .iter()
+                .any(|e| e.severity == crate::doctor::report::Severity::Error)
+        );
+    }
+
+    #[test]
+    fn duplicate_source_path_produces_warning() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+
+        let mut entries = HashMap::new();
+        entries.insert("bashrc_a".to_string(), config_entry(".bashrc"));
+        entries.insert("bashrc_b".to_string(), config_entry(".bashrc"));
+        let registry = ConfigRegistry {
+            version: "1.0.0".to_string(),
+            entries,
+        };
+        registry.save(&ctx.config_registry_path()).unwrap();
+
+        let validator = RegistryFilesValidator::new(ctx);
+        let errors = validator.validate();
+
+        assert!(errors.iter().any(|e| {
+            e.severity == crate::doctor::report::Severity::Warning
+                && e.message.contains("Duplicate source path '.bashrc'")
+        }));
+    }
+
+    #[test]
+    fn package_entry_with_unavailable_command_produces_info_finding() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+
+        let mut entries = HashMap::new();
+        entries.insert(
+            "fake_pm".to_string(),
+            PackageRegistryEntry {
+                name: "Fake Package Manager".to_string(),
+                description: None,
+                enabled: true,
+                command: "definitely-not-a-real-pkg-mgr-xyz".to_string(),
+                args: vec![],
+                output_file: "fake.txt".to_string(),
+                platforms: None,
+            },
+        );
+        let registry = PackageRegistry {
+            version: "1.0.0".to_string(),
+            entries,
+        };
+        registry.save(&ctx.package_registry_path()).unwrap();
+
+        let validator = RegistryFilesValidator::new(ctx);
+        let errors = validator.validate();
+
+        assert!(errors.iter().any(|e| {
+            e.severity == crate::doctor::report::Severity::Info
+                && e.message.contains("Fake Package Manager")
+                && e.message.contains("not found in PATH")
+        }));
     }
 }

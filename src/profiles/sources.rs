@@ -11,6 +11,7 @@ pub enum SourceLayer {
 }
 
 impl std::fmt::Display for SourceLayer {
+    /// Prints as `"common"` or `"profile"`.
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             SourceLayer::Common => write!(f, "common"),
@@ -129,4 +130,190 @@ fn is_valid_source_path(source_path: &str) -> bool {
         && !path
             .components()
             .any(|component| matches!(component, Component::ParentDir))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use super::*;
+
+    fn dfm() -> (tempfile::TempDir, Dfm) {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        (dir, ctx)
+    }
+
+    fn write_file(path: PathBuf, contents: &str) {
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, contents).unwrap();
+    }
+
+    #[test]
+    fn is_valid_source_path_rejects_empty() {
+        assert!(!is_valid_source_path(""));
+    }
+
+    #[test]
+    fn is_valid_source_path_rejects_absolute() {
+        assert!(!is_valid_source_path("/etc/passwd"));
+    }
+
+    #[test]
+    fn is_valid_source_path_rejects_parent_dir_component() {
+        assert!(!is_valid_source_path("../secrets"));
+        assert!(!is_valid_source_path("foo/../../secrets"));
+    }
+
+    #[test]
+    fn is_valid_source_path_accepts_relative_path() {
+        assert!(is_valid_source_path(".config/nvim/init.lua"));
+    }
+
+    #[test]
+    fn source_layer_display() {
+        assert_eq!(SourceLayer::Common.to_string(), "common");
+        assert_eq!(SourceLayer::Profile.to_string(), "profile");
+    }
+
+    #[test]
+    fn resolve_source_prefers_profile_layer_over_common() {
+        let (_dir, ctx) = dfm();
+        let profile = ActiveProfile::with_profile("work");
+
+        write_file(ctx.common_dir().join(".zshrc"), "common");
+        write_file(ctx.profile_dir("work").join(".zshrc"), "profile");
+
+        let resolved = profile.resolve_source(&ctx, ".zshrc").unwrap();
+        assert_eq!(resolved.layer, SourceLayer::Profile);
+        assert_eq!(resolved.path, ctx.profile_dir("work").join(".zshrc"));
+    }
+
+    #[test]
+    fn resolve_source_falls_back_to_common_when_profile_missing() {
+        let (_dir, ctx) = dfm();
+        let profile = ActiveProfile::with_profile("work");
+
+        write_file(ctx.common_dir().join(".zshrc"), "common");
+
+        let resolved = profile.resolve_source(&ctx, ".zshrc").unwrap();
+        assert_eq!(resolved.layer, SourceLayer::Common);
+        assert_eq!(resolved.path, ctx.common_dir().join(".zshrc"));
+    }
+
+    #[test]
+    fn resolve_source_returns_none_when_missing_everywhere() {
+        let (_dir, ctx) = dfm();
+        let profile = ActiveProfile::with_profile("work");
+        assert!(profile.resolve_source(&ctx, ".zshrc").is_none());
+    }
+
+    #[test]
+    fn resolve_source_rejects_invalid_source_path() {
+        let (_dir, ctx) = dfm();
+        let profile = ActiveProfile::common_only();
+        write_file(ctx.common_dir().join("secrets"), "hi");
+        assert!(profile.resolve_source(&ctx, "../secrets").is_none());
+    }
+
+    #[test]
+    fn get_candidate_sources_includes_profile_then_common_when_named() {
+        let (_dir, ctx) = dfm();
+        let profile = ActiveProfile::with_profile("work");
+
+        let candidates = profile.get_candidate_sources(&ctx, ".zshrc");
+        assert_eq!(
+            candidates,
+            vec![
+                (ctx.profile_dir("work").join(".zshrc"), SourceLayer::Profile),
+                (ctx.common_dir().join(".zshrc"), SourceLayer::Common),
+            ]
+        );
+    }
+
+    #[test]
+    fn get_candidate_sources_common_only_when_unnamed() {
+        let (_dir, ctx) = dfm();
+        let profile = ActiveProfile::common_only();
+
+        let candidates = profile.get_candidate_sources(&ctx, ".zshrc");
+        assert_eq!(
+            candidates,
+            vec![(ctx.common_dir().join(".zshrc"), SourceLayer::Common)]
+        );
+    }
+
+    #[test]
+    fn get_all_resolved_sources_returns_every_existing_layer() {
+        let (_dir, ctx) = dfm();
+        let profile = ActiveProfile::with_profile("work");
+
+        write_file(ctx.common_dir().join(".zshrc"), "common");
+        write_file(ctx.profile_dir("work").join(".zshrc"), "profile");
+
+        let resolved = profile.get_all_resolved_sources(&ctx, ".zshrc");
+        assert_eq!(resolved.len(), 2);
+        assert_eq!(resolved[0].layer, SourceLayer::Profile);
+        assert_eq!(resolved[1].layer, SourceLayer::Common);
+    }
+
+    #[test]
+    fn get_all_resolved_sources_skips_missing_layers() {
+        let (_dir, ctx) = dfm();
+        let profile = ActiveProfile::with_profile("work");
+
+        write_file(ctx.common_dir().join(".zshrc"), "common");
+
+        let resolved = profile.get_all_resolved_sources(&ctx, ".zshrc");
+        assert_eq!(resolved.len(), 1);
+        assert_eq!(resolved[0].layer, SourceLayer::Common);
+    }
+
+    #[test]
+    fn resolve_encrypted_bundle_finds_bundle_in_profile_layer() {
+        let (_dir, ctx) = dfm();
+        let profile = ActiveProfile::with_profile("work");
+
+        write_file(
+            ctx.encrypted_profile_dir("work")
+                .join(ENCRYPTED_BUNDLE_FILE),
+            "bundle",
+        );
+
+        let resolved = profile.resolve_encrypted_bundle(&ctx).unwrap();
+        assert_eq!(resolved.layer, SourceLayer::Profile);
+        assert_eq!(
+            resolved.path,
+            ctx.encrypted_profile_dir("work")
+                .join(ENCRYPTED_BUNDLE_FILE)
+        );
+    }
+
+    #[test]
+    fn resolve_encrypted_source_prefers_profile_layer_over_common() {
+        let (_dir, ctx) = dfm();
+        let profile = ActiveProfile::with_profile("work");
+
+        write_file(ctx.encrypted_common_dir().join("secret.age"), "common");
+        write_file(
+            ctx.encrypted_profile_dir("work").join("secret.age"),
+            "profile",
+        );
+
+        let resolved = profile
+            .resolve_encrypted_source(&ctx, "secret.age")
+            .unwrap();
+        assert_eq!(resolved.layer, SourceLayer::Profile);
+    }
+
+    #[test]
+    fn resolve_encrypted_source_returns_none_when_missing() {
+        let (_dir, ctx) = dfm();
+        let profile = ActiveProfile::common_only();
+        assert!(
+            profile
+                .resolve_encrypted_source(&ctx, "secret.age")
+                .is_none()
+        );
+    }
 }

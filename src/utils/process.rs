@@ -51,3 +51,66 @@ pub(crate) fn is_command_available(command: &str) -> bool {
 
     false
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nonexistent_command_returns_error() {
+        let result = run_cmd("this-command-definitely-does-not-exist-xyz", &[], None);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn is_command_available_false_for_nonexistent_command() {
+        assert!(!is_command_available(
+            "this-command-definitely-does-not-exist-xyz"
+        ));
+    }
+
+    #[test]
+    fn is_command_available_checks_multi_component_path_directly() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("some-file");
+        std::fs::write(&file, b"").unwrap();
+
+        assert!(is_command_available(file.to_str().unwrap()));
+
+        let missing = dir.path().join("missing-file");
+        assert!(!is_command_available(missing.to_str().unwrap()));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn run_cmd_captures_stdout() {
+        let output = run_cmd("echo", &["hello"], None).unwrap();
+        assert_eq!(output, "hello\n");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn run_cmd_runs_in_given_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("marker.txt"), b"").unwrap();
+
+        let output = run_cmd("ls", &[], Some(dir.path())).unwrap();
+        assert!(output.contains("marker.txt"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn run_cmd_returns_command_failure_on_nonzero_exit() {
+        let result = run_cmd("false", &[], None);
+        match result {
+            Err(Error::CommandFailure { cmd, .. }) => assert_eq!(cmd, "false"),
+            other => panic!("expected CommandFailure, got {other:?}"),
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn is_command_available_true_for_known_command() {
+        assert!(is_command_available("echo"));
+    }
+}

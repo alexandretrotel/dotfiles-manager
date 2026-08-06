@@ -90,3 +90,71 @@ impl SectionReport {
         self.outcomes.is_empty() && self.warnings.is_empty()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn done_outcome_has_no_note_and_is_done() {
+        let outcome = ItemOutcome::done("id-1", "~/.zshrc");
+        assert_eq!(outcome.id, "id-1");
+        assert_eq!(outcome.label, "~/.zshrc");
+        assert!(outcome.is_done());
+        assert!(matches!(outcome.status, ItemStatus::Done { note: None }));
+    }
+
+    #[test]
+    fn done_with_note_outcome_carries_the_note() {
+        let outcome = ItemOutcome::done_with_note("id-1", "~/.zshrc", "converted symlink");
+        assert!(outcome.is_done());
+        match outcome.status {
+            ItemStatus::Done { note: Some(note) } => assert_eq!(note, "converted symlink"),
+            other => panic!("expected Done with note, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn skipped_outcome_is_not_done_and_carries_reason() {
+        let outcome = ItemOutcome::skipped("id-2", "~/.vimrc", "already up to date");
+        assert!(!outcome.is_done());
+        match outcome.status {
+            ItemStatus::Skipped { reason } => assert_eq!(reason, "already up to date"),
+            other => panic!("expected Skipped, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn empty_section_report_is_empty() {
+        assert!(SectionReport::default().is_empty());
+    }
+
+    #[test]
+    fn section_report_with_outcomes_is_not_empty() {
+        let mut report = SectionReport::default();
+        report.outcomes.push(ItemOutcome::done("id-1", "a"));
+        assert!(!report.is_empty());
+    }
+
+    #[test]
+    fn section_report_with_only_warnings_is_not_empty() {
+        let mut report = SectionReport::default();
+        report.warnings.push("could not decrypt bundle".to_string());
+        assert!(!report.is_empty());
+    }
+
+    #[test]
+    fn succeeded_and_skipped_counts_reflect_outcome_mix() {
+        let mut report = SectionReport::default();
+        report.outcomes.push(ItemOutcome::done("id-1", "a"));
+        report
+            .outcomes
+            .push(ItemOutcome::done_with_note("id-2", "b", "note"));
+        report
+            .outcomes
+            .push(ItemOutcome::skipped("id-3", "c", "reason"));
+
+        assert_eq!(report.succeeded(), 2);
+        assert_eq!(report.skipped(), 1);
+    }
+}

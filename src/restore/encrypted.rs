@@ -174,3 +174,123 @@ fn restore_dir(
 
     Ok((!warnings.is_empty()).then(|| warnings.join("; ")))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::context::ENCRYPTED_BUNDLE_FILE;
+    use crate::encryption::{encrypt_file, write_entries_tar};
+    use std::path::PathBuf;
+
+    fn entry(source_path: &str, target_path: PathBuf) -> EncryptedRegistryEntry {
+        EncryptedRegistryEntry {
+            name: source_path.to_string(),
+            description: None,
+            enabled: true,
+            source_path: source_path.to_string(),
+            target_path,
+        }
+    }
+
+    fn save_registry(ctx: &Dfm, entries: HashMap<String, EncryptedRegistryEntry>) {
+        let registry = EncryptedRegistry {
+            version: "1.0.0".to_string(),
+            entries,
+        };
+        registry.save(&ctx.encrypted_registry_path()).unwrap();
+    }
+
+    #[test]
+    fn restores_a_file_member_from_the_encrypted_bundle() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path().join("dfm"));
+        let profile = ActiveProfile::common_only();
+        let password = SecretString::from("pw".to_string());
+
+        let target = dir.path().join("restored.txt");
+        let mut entries = HashMap::new();
+        entries.insert("secret".to_string(), entry("secret.txt", target.clone()));
+        save_registry(&ctx, entries);
+
+        let source_file = dir.path().join("plain-secret.txt");
+        fs::write(&source_file, b"top secret").unwrap();
+        let bundle_dir = profile.encrypted_backup_path(&ctx);
+        fs::create_dir_all(&bundle_dir).unwrap();
+        let tar_temp = create_temp_file("test-bundle").unwrap();
+        write_entries_tar(tar_temp.path(), &[("secret.txt", source_file.as_path())]).unwrap();
+        encrypt_file(
+            tar_temp.path(),
+            &bundle_dir.join(ENCRYPTED_BUNDLE_FILE),
+            &password,
+        )
+        .unwrap();
+
+        let report = restore_encrypted_configs(&ctx, &profile, &password);
+
+        assert_eq!(report.succeeded(), 1);
+        assert_eq!(fs::read(&target).unwrap(), b"top secret");
+    }
+
+    #[test]
+    fn no_bundle_backup_found_produces_warning_not_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path().join("dfm"));
+        let profile = ActiveProfile::common_only();
+        let password = SecretString::from("pw".to_string());
+
+        let mut entries = HashMap::new();
+        entries.insert(
+            "secret".to_string(),
+            entry("secret.txt", dir.path().join("target.txt")),
+        );
+        save_registry(&ctx, entries);
+
+        let report = restore_encrypted_configs(&ctx, &profile, &password);
+
+        assert!(report.outcomes.is_empty());
+        assert_eq!(report.warnings.len(), 1);
+        assert!(report.warnings[0].contains("no encrypted bundle backup found"));
+    }
+
+    #[test]
+    fn empty_registry_returns_empty_report_without_looking_for_bundle() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path().join("dfm"));
+        let profile = ActiveProfile::common_only();
+        let password = SecretString::from("pw".to_string());
+
+        save_registry(&ctx, HashMap::new());
+
+        let report = restore_encrypted_configs(&ctx, &profile, &password);
+
+        assert!(report.is_empty());
+    }
+
+    #[test]
+    fn restore_dir_writes_nested_files_from_matching_prefix() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("target_dir");
+
+        let mut members = HashMap::new();
+        members.insert("mydir/a.txt".to_string(), b"a".to_vec());
+        members.insert("mydir/sub/b.txt".to_string(), b"b".to_vec());
+        members.insert("otherdir/c.txt".to_string(), b"c".to_vec());
+
+        let note = restore_dir(&target, "mydir", &members).unwrap();
+        assert!(note.is_none());
+
+        assert_eq!(fs::read(target.join("a.txt")).unwrap(), b"a");
+        assert_eq!(fs::read(target.join("sub/b.txt")).unwrap(), b"b");
+        assert!(!target.join("c.txt").exists());
+    }
+
+    #[test]
+    fn restore_dir_errors_when_prefix_not_in_bundle() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("target_dir");
+        let members: HashMap<String, Vec<u8>> = HashMap::new();
+
+        let err = restore_dir(&target, "missing-prefix", &members).unwrap_err();
+        assert_eq!(err, "not in encrypted bundle");
+    }
+}

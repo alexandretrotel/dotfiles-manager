@@ -71,3 +71,76 @@ pub fn decrypt_file(source: &Path, dest: &Path, password: &SecretString) -> Resu
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn encrypt_then_decrypt_round_trips_content() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("secret.txt");
+        let encrypted = dir.path().join("secret.age");
+        let decrypted = dir.path().join("secret.out");
+
+        fs::write(&source, b"hello, world").unwrap();
+        let password = SecretString::from("correct horse battery staple".to_string());
+
+        encrypt_file(&source, &encrypted, &password).unwrap();
+        assert!(encrypted.exists());
+        assert_ne!(fs::read(&encrypted).unwrap(), fs::read(&source).unwrap());
+
+        decrypt_file(&encrypted, &decrypted, &password).unwrap();
+        assert_eq!(fs::read(&decrypted).unwrap(), b"hello, world");
+    }
+
+    #[test]
+    fn decrypt_with_wrong_password_is_password_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("secret.txt");
+        let encrypted = dir.path().join("secret.age");
+        let decrypted = dir.path().join("secret.out");
+
+        fs::write(&source, b"top secret").unwrap();
+        let password = SecretString::from("right password".to_string());
+        let wrong_password = SecretString::from("wrong password".to_string());
+
+        encrypt_file(&source, &encrypted, &password).unwrap();
+
+        let err = decrypt_file(&encrypted, &decrypted, &wrong_password).unwrap_err();
+        assert!(err.is_password_error());
+    }
+
+    #[test]
+    fn encrypt_creates_missing_parent_directories() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("secret.txt");
+        let encrypted = dir.path().join("nested/deep/secret.age");
+
+        fs::write(&source, b"nested content").unwrap();
+        let password = SecretString::from("password".to_string());
+
+        encrypt_file(&source, &encrypted, &password).unwrap();
+        assert!(encrypted.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn decrypt_sets_private_file_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("secret.txt");
+        let encrypted = dir.path().join("secret.age");
+        let decrypted = dir.path().join("secret.out");
+
+        fs::write(&source, b"permissions matter").unwrap();
+        let password = SecretString::from("password".to_string());
+
+        encrypt_file(&source, &encrypted, &password).unwrap();
+        decrypt_file(&encrypted, &decrypted, &password).unwrap();
+
+        let mode = fs::metadata(&decrypted).unwrap().permissions().mode();
+        assert_eq!(mode & 0o777, 0o600);
+    }
+}

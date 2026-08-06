@@ -49,3 +49,35 @@ impl Default for EncryptedRegistry {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_has_expected_version() {
+        let registry = EncryptedRegistry::default();
+        assert_eq!(registry.version, "1.0.0");
+    }
+
+    #[test]
+    fn default_includes_ssh_config_entry() {
+        let registry = EncryptedRegistry::default();
+        let ssh_config = registry.entries.get("ssh_config").unwrap();
+
+        assert_eq!(ssh_config.name, "SSH Config");
+        assert_eq!(ssh_config.source_path, "ssh/config");
+        assert!(ssh_config.enabled);
+        assert_eq!(
+            ssh_config.description.as_deref(),
+            Some("SSH client configuration file")
+        );
+        assert!(ssh_config.target_path.ends_with(".ssh/config"));
+    }
+
+    #[test]
+    fn default_has_exactly_one_entry() {
+        let registry = EncryptedRegistry::default();
+        assert_eq!(registry.entries.len(), 1);
+    }
+}

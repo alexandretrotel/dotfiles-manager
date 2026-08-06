@@ -109,3 +109,95 @@ impl PackageRegistry {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_has_expected_version() {
+        let registry = PackageRegistry::default();
+        assert_eq!(registry.version, "1.0.0");
+    }
+
+    #[test]
+    fn default_includes_brew_entry_scoped_to_macos_and_linux() {
+        let registry = PackageRegistry::default();
+        let brew = registry.entries.get("brew").unwrap();
+
+        assert_eq!(brew.name, "Homebrew");
+        assert_eq!(brew.command, "brew");
+        assert_eq!(brew.args, vec!["leaves".to_string()]);
+        assert_eq!(brew.output_file, "brew.txt");
+        assert!(brew.enabled);
+        assert_eq!(
+            brew.platforms,
+            Some(vec!["macos".to_string(), "linux".to_string()])
+        );
+    }
+
+    #[test]
+    fn default_includes_npm_entry_with_no_platform_restriction() {
+        let registry = PackageRegistry::default();
+        let npm = registry.entries.get("npm").unwrap();
+
+        assert_eq!(npm.name, "npm");
+        assert_eq!(npm.command, "npm");
+        assert!(npm.enabled);
+        assert_eq!(npm.platforms, None);
+    }
+
+    #[test]
+    fn default_has_four_entries() {
+        let registry = PackageRegistry::default();
+        assert_eq!(registry.entries.len(), 4);
+    }
+
+    #[test]
+    fn platform_compatible_entries_includes_matching_platform() {
+        let registry = PackageRegistry::default();
+        let ids: Vec<&String> = registry
+            .get_platform_compatible_entries("macos")
+            .map(|(id, _)| id)
+            .collect();
+
+        assert!(ids.contains(&&"brew".to_string()));
+    }
+
+    #[test]
+    fn platform_compatible_entries_excludes_non_matching_platform() {
+        let registry = PackageRegistry::default();
+        let ids: Vec<&String> = registry
+            .get_platform_compatible_entries("windows")
+            .map(|(id, _)| id)
+            .collect();
+
+        assert!(!ids.contains(&&"brew".to_string()));
+    }
+
+    #[test]
+    fn platform_compatible_entries_always_includes_platform_agnostic_entries() {
+        let registry = PackageRegistry::default();
+        let ids: Vec<&String> = registry
+            .get_platform_compatible_entries("windows")
+            .map(|(id, _)| id)
+            .collect();
+
+        assert!(ids.contains(&&"npm".to_string()));
+        assert!(ids.contains(&&"cargo".to_string()));
+        assert!(ids.contains(&&"uv".to_string()));
+    }
+
+    #[test]
+    fn platform_compatible_entries_excludes_disabled_entries() {
+        let mut registry = PackageRegistry::default();
+        registry.entries.get_mut("npm").unwrap().enabled = false;
+
+        let ids: Vec<&String> = registry
+            .get_platform_compatible_entries("linux")
+            .map(|(id, _)| id)
+            .collect();
+
+        assert!(!ids.contains(&&"npm".to_string()));
+    }
+}

@@ -66,12 +66,7 @@ pub(crate) fn sync_directory(source: &Path, destination: &Path) -> io::Result<Op
     require_exists(source, "directory")?;
 
     if let Some(canonical_target) = symlink_self_reference(source, destination) {
-        let file_type = fs::symlink_metadata(source)?.file_type();
-        if file_type.is_dir() || (file_type.is_symlink() && fs::metadata(source)?.is_dir()) {
-            fs::remove_dir(source)?;
-        } else {
-            fs::remove_file(source)?;
-        }
+        fs::remove_file(source)?;
         fs::create_dir_all(source)?;
         copy_dir_recursive(&canonical_target, source)?;
         return Ok(Some(format!(
@@ -144,4 +139,206 @@ fn prune_extraneous(dir: &Path, keep: &HashSet<OsString>) -> io::Result<()> {
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn copy_dir_recursive_copies_nested_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("src");
+        let dst = dir.path().join("dst");
+
+        fs::create_dir_all(src.join("sub")).unwrap();
+        fs::write(src.join("top.txt"), "top").unwrap();
+        fs::write(src.join("sub/nested.txt"), "nested").unwrap();
+        fs::create_dir_all(&dst).unwrap();
+
+        copy_dir_recursive(&src, &dst).unwrap();
+
+        assert_eq!(fs::read_to_string(dst.join("top.txt")).unwrap(), "top");
+        assert_eq!(
+            fs::read_to_string(dst.join("sub/nested.txt")).unwrap(),
+            "nested"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn copy_dir_recursive_skips_symlinks() {
+        let dir = tempfile::tempdir().unwrap();
+        let src = dir.path().join("src");
+        let dst = dir.path().join("dst");
+
+        fs::create_dir_all(&src).unwrap();
+        fs::write(src.join("real.txt"), "real").unwrap();
+        std::os::unix::fs::symlink(src.join("real.txt"), src.join("link.txt")).unwrap();
+        fs::create_dir_all(&dst).unwrap();
+
+        copy_dir_recursive(&src, &dst).unwrap();
+
+        assert!(dst.join("real.txt").exists());
+        assert!(!dst.join("link.txt").exists());
+    }
+
+    #[test]
+    fn sync_file_copies_plain_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("source.txt");
+        let destination = dir.path().join("nested/destination.txt");
+        fs::write(&source, "content").unwrap();
+
+        let note = sync_file(&source, &destination).unwrap();
+
+        assert!(note.is_none());
+        assert_eq!(fs::read_to_string(&destination).unwrap(), "content");
+    }
+
+    #[test]
+    fn sync_file_errors_when_source_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("missing.txt");
+        let destination = dir.path().join("destination.txt");
+
+        let err = sync_file(&source, &destination).unwrap_err();
+
+        assert_eq!(err.kind(), io::ErrorKind::NotFound);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn sync_file_converts_self_referencing_symlink_to_real_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let destination = dir.path().join("destination.txt");
+        fs::write(&destination, "hello").unwrap();
+
+        let source = dir.path().join("source.txt");
+        std::os::unix::fs::symlink(destination.canonicalize().unwrap(), &source).unwrap();
+
+        let note = sync_file(&source, &destination).unwrap();
+
+        assert!(note.is_some());
+        assert!(!source.is_symlink());
+        assert_eq!(fs::read_to_string(&source).unwrap(), "hello");
+        assert_eq!(fs::read_to_string(&destination).unwrap(), "hello");
+    }
+
+    #[test]
+    fn sync_directory_contents_prunes_stale_entries() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("source");
+        let dest = dir.path().join("dest");
+
+        fs::create_dir_all(&source).unwrap();
+        fs::write(source.join("keep.txt"), "keep").unwrap();
+
+        fs::create_dir_all(&dest).unwrap();
+        fs::write(dest.join("stale.txt"), "stale").unwrap();
+
+        sync_directory_contents(&source, &dest).unwrap();
+
+        assert!(dest.join("keep.txt").exists());
+        assert!(!dest.join("stale.txt").exists());
+    }
+
+    #[test]
+    fn sync_directory_contents_prunes_stale_subdirectories() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("source");
+        let dest = dir.path().join("dest");
+
+        fs::create_dir_all(&source).unwrap();
+
+        fs::create_dir_all(dest.join("stale_dir")).unwrap();
+        fs::write(dest.join("stale_dir/f.txt"), "stale").unwrap();
+
+        sync_directory_contents(&source, &dest).unwrap();
+
+        assert!(!dest.join("stale_dir").exists());
+    }
+
+    #[test]
+    fn sync_directory_copies_nested_subdirs() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("source");
+        let destination = dir.path().join("destination");
+
+        fs::create_dir_all(source.join("sub")).unwrap();
+        fs::write(source.join("top.txt"), "top").unwrap();
+        fs::write(source.join("sub/nested.txt"), "nested").unwrap();
+
+        let note = sync_directory(&source, &destination).unwrap();
+
+        assert!(note.is_none());
+        assert_eq!(
+            fs::read_to_string(destination.join("top.txt")).unwrap(),
+            "top"
+        );
+        assert_eq!(
+            fs::read_to_string(destination.join("sub/nested.txt")).unwrap(),
+            "nested"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn sync_directory_converts_self_referencing_symlink_to_real_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        let destination = dir.path().join("destination");
+        fs::create_dir_all(&destination).unwrap();
+        fs::write(destination.join("f.txt"), "hello").unwrap();
+
+        let source = dir.path().join("source");
+        std::os::unix::fs::symlink(destination.canonicalize().unwrap(), &source).unwrap();
+
+        let note = sync_directory(&source, &destination).unwrap();
+
+        assert!(note.is_some());
+        assert!(!source.is_symlink());
+        assert!(source.is_dir());
+        assert_eq!(fs::read_to_string(source.join("f.txt")).unwrap(), "hello");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlink_self_reference_detects_symlink_pointing_at_destination() {
+        let dir = tempfile::tempdir().unwrap();
+        let destination = dir.path().join("destination");
+        fs::create_dir_all(&destination).unwrap();
+
+        let source = dir.path().join("source");
+        std::os::unix::fs::symlink(destination.canonicalize().unwrap(), &source).unwrap();
+
+        let detected = symlink_self_reference(&source, &destination).unwrap();
+
+        assert_eq!(detected, destination.canonicalize().unwrap());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlink_self_reference_ignores_symlink_pointing_elsewhere() {
+        let dir = tempfile::tempdir().unwrap();
+        let destination = dir.path().join("destination");
+        let elsewhere = dir.path().join("elsewhere");
+        fs::create_dir_all(&destination).unwrap();
+        fs::create_dir_all(&elsewhere).unwrap();
+
+        let source = dir.path().join("source");
+        std::os::unix::fs::symlink(&elsewhere, &source).unwrap();
+
+        assert!(symlink_self_reference(&source, &destination).is_none());
+    }
+
+    #[test]
+    fn symlink_self_reference_ignores_non_symlink_source() {
+        let dir = tempfile::tempdir().unwrap();
+        let destination = dir.path().join("destination");
+        let source = dir.path().join("source");
+        fs::create_dir_all(&destination).unwrap();
+        fs::create_dir_all(&source).unwrap();
+
+        assert!(symlink_self_reference(&source, &destination).is_none());
+    }
 }

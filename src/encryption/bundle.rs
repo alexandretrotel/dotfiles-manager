@@ -51,6 +51,9 @@ pub fn collect_dir_tar_entries(source_prefix: &str, dir: &Path) -> Result<Vec<(S
     Ok(entries)
 }
 
+/// Recursive worker for [`collect_dir_tar_entries`]; `prefix` is the
+/// current member-name prefix, extended by one path component per
+/// recursion level.
 fn collect_dir_tar_entries_into(
     prefix: &str,
     dir: &Path,
@@ -115,4 +118,138 @@ pub fn create_temp_file(label: &str) -> std::io::Result<NamedTempFile> {
     tempfile::Builder::new()
         .prefix(&format!("dfm-{label}-"))
         .tempfile()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn normalize_tar_path_converts_backslashes_to_forward_slashes() {
+        assert_eq!(
+            normalize_tar_path(Path::new("a\\b\\c.txt")),
+            "a/b/c.txt".to_string()
+        );
+    }
+
+    #[test]
+    fn normalize_tar_path_strips_leading_dot_slash() {
+        assert_eq!(
+            normalize_tar_path(Path::new("./a/b.txt")),
+            "a/b.txt".to_string()
+        );
+    }
+
+    #[test]
+    fn write_entries_tar_errors_when_source_file_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        let tar_path = dir.path().join("bundle.tar");
+        let missing = dir.path().join("missing.txt");
+
+        let err = write_entries_tar(&tar_path, &[("profile/missing.txt", &missing)]);
+
+        assert!(err.is_err());
+    }
+
+    #[test]
+    fn load_tar_member_map_skips_directory_entries() {
+        let dir = tempfile::tempdir().unwrap();
+        let real_dir = dir.path().join("real_dir");
+        fs::create_dir_all(&real_dir).unwrap();
+
+        let tar_path = dir.path().join("bundle.tar");
+        let file = fs::File::create(&tar_path).unwrap();
+        let mut builder = tar::Builder::new(file);
+        builder.append_dir("profile/subdir", &real_dir).unwrap();
+        builder.finish().unwrap();
+
+        let members = load_tar_member_map(&tar_path).unwrap();
+
+        assert!(members.is_empty());
+    }
+
+    #[test]
+    fn write_entries_tar_round_trips_through_load_tar_member_map() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_a = dir.path().join("a.txt");
+        let file_b = dir.path().join("b.txt");
+        fs::write(&file_a, b"content a").unwrap();
+        fs::write(&file_b, b"content b").unwrap();
+
+        let tar_path = dir.path().join("bundle.tar");
+        write_entries_tar(
+            &tar_path,
+            &[("profile/a.txt", &file_a), ("profile/b.txt", &file_b)],
+        )
+        .unwrap();
+
+        let members = load_tar_member_map(&tar_path).unwrap();
+        assert_eq!(members.len(), 2);
+        assert_eq!(members.get("profile/a.txt").unwrap(), b"content a");
+        assert_eq!(members.get("profile/b.txt").unwrap(), b"content b");
+    }
+
+    #[test]
+    fn collect_dir_tar_entries_walks_nested_dirs_sorted_and_normalized() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::write(dir.path().join("a.txt"), b"a").unwrap();
+        fs::create_dir_all(dir.path().join("sub/subsub")).unwrap();
+        fs::write(dir.path().join("sub/b.txt"), b"b").unwrap();
+        fs::write(dir.path().join("sub/subsub/c.txt"), b"c").unwrap();
+
+        let entries = collect_dir_tar_entries("prefix", dir.path()).unwrap();
+        let names: Vec<&str> = entries.iter().map(|(name, _)| name.as_str()).collect();
+
+        assert_eq!(
+            names,
+            vec![
+                "prefix/a.txt",
+                "prefix/sub/b.txt",
+                "prefix/sub/subsub/c.txt"
+            ]
+        );
+
+        for (name, path) in &entries {
+            assert!(!name.contains('\\'));
+            assert!(path.is_file());
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn collect_dir_tar_entries_skips_symlinks() {
+        use std::os::unix::fs::symlink;
+
+        let dir = tempfile::tempdir().unwrap();
+        let real_file = dir.path().join("real.txt");
+        fs::write(&real_file, b"real").unwrap();
+        symlink(&real_file, dir.path().join("link.txt")).unwrap();
+
+        let entries = collect_dir_tar_entries("prefix", dir.path()).unwrap();
+        let names: Vec<&str> = entries.iter().map(|(name, _)| name.as_str()).collect();
+
+        assert_eq!(names, vec!["prefix/real.txt"]);
+    }
+
+    #[test]
+    fn set_private_file_permissions_succeeds_on_regular_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("file.txt");
+        fs::write(&path, b"data").unwrap();
+
+        set_private_file_permissions(&path).unwrap();
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = fs::metadata(&path).unwrap().permissions().mode();
+            assert_eq!(mode & 0o777, 0o600);
+        }
+    }
+
+    #[test]
+    fn create_temp_file_creates_an_existing_file() {
+        let file = create_temp_file("test").unwrap();
+        assert!(file.path().exists());
+    }
 }

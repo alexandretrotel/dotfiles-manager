@@ -107,3 +107,117 @@ Thumbs.db
     fs::write(&gitignore_path, default_gitignore)?;
     Ok(true)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ensure_git_repo_fails_when_no_git_dir_exists() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+
+        let result = ensure_git_repo(&ctx);
+
+        assert!(matches!(result, Err(Error::NoGitRepository { .. })));
+    }
+
+    #[test]
+    fn ensure_git_repo_succeeds_and_writes_gitignore_when_already_initialized() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        run_cmd("git", &["init"], Some(dir.path())).unwrap();
+
+        ensure_git_repo(&ctx).unwrap();
+
+        assert!(dir.path().join(".gitignore").exists());
+    }
+
+    #[test]
+    fn ensure_git_repo_is_a_noop_when_called_twice() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        run_cmd("git", &["init"], Some(dir.path())).unwrap();
+
+        ensure_git_repo(&ctx).unwrap();
+        ensure_git_repo(&ctx).unwrap();
+
+        assert!(dir.path().join(".git").exists());
+    }
+
+    #[test]
+    fn init_repo_if_missing_creates_a_new_repo() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+
+        let report = init_repo_if_missing(&ctx).unwrap();
+
+        assert!(report.initialized);
+        assert!(report.gitignore_created);
+        assert!(dir.path().join(".git").exists());
+        assert!(dir.path().join(".gitignore").exists());
+    }
+
+    #[test]
+    fn init_repo_if_missing_reports_not_initialized_when_repo_already_exists() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        run_cmd("git", &["init"], Some(dir.path())).unwrap();
+
+        let report = init_repo_if_missing(&ctx).unwrap();
+
+        assert!(!report.initialized);
+        assert!(report.gitignore_created);
+    }
+
+    #[test]
+    fn init_repo_if_missing_does_not_recreate_an_existing_gitignore() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        run_cmd("git", &["init"], Some(dir.path())).unwrap();
+        fs::write(dir.path().join(".gitignore"), "custom\n").unwrap();
+
+        let report = init_repo_if_missing(&ctx).unwrap();
+
+        assert!(!report.initialized);
+        assert!(!report.gitignore_created);
+        assert_eq!(
+            fs::read_to_string(dir.path().join(".gitignore")).unwrap(),
+            "custom\n"
+        );
+    }
+
+    #[test]
+    fn run_cmd_passthrough_succeeds_for_a_valid_command() {
+        let result = run_cmd_passthrough("git", &["--version"], None);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn run_cmd_passthrough_errors_on_invalid_git_subcommand() {
+        let dir = tempfile::tempdir().unwrap();
+        run_cmd("git", &["init"], Some(dir.path())).unwrap();
+
+        let result =
+            run_cmd_passthrough("git", &["this-is-not-a-git-subcommand"], Some(dir.path()));
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn run_cmd_passthrough_errors_when_dir_does_not_exist() {
+        let result = run_cmd_passthrough("git", &["status"], Some(Path::new("/no/such/dir")));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn passthrough_runs_git_status_in_repo() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        run_cmd("git", &["init"], Some(dir.path())).unwrap();
+
+        let result = passthrough(&ctx, &["status".to_string()]);
+
+        assert!(result.is_ok());
+    }
+}

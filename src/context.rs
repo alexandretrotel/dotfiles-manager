@@ -97,3 +97,105 @@ impl Dfm {
         self.root.join(ACTIVE_PROFILE_FILE)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fake_dfm() -> Dfm {
+        Dfm::with_root(PathBuf::from("/tmp/fake-dfm-root"))
+    }
+
+    #[test]
+    fn with_root_stores_the_given_root() {
+        assert_eq!(fake_dfm().root(), Path::new("/tmp/fake-dfm-root"));
+    }
+
+    #[test]
+    fn backup_dir_is_under_root() {
+        assert_eq!(
+            fake_dfm().backup_dir(),
+            PathBuf::from("/tmp/fake-dfm-root/backup")
+        );
+    }
+
+    #[test]
+    fn common_dir_is_under_backup_dir() {
+        assert_eq!(
+            fake_dfm().common_dir(),
+            PathBuf::from("/tmp/fake-dfm-root/backup/common")
+        );
+    }
+
+    #[test]
+    fn encrypted_common_dir_is_under_common_dir() {
+        assert_eq!(
+            fake_dfm().encrypted_common_dir(),
+            PathBuf::from("/tmp/fake-dfm-root/backup/common/encrypted")
+        );
+    }
+
+    #[test]
+    fn profile_dir_is_under_profiles_dir() {
+        assert_eq!(
+            fake_dfm().profile_dir("work"),
+            PathBuf::from("/tmp/fake-dfm-root/backup/profiles/work")
+        );
+    }
+
+    #[test]
+    fn encrypted_profile_dir_is_under_profile_dir() {
+        assert_eq!(
+            fake_dfm().encrypted_profile_dir("work"),
+            PathBuf::from("/tmp/fake-dfm-root/backup/profiles/work/encrypted")
+        );
+    }
+
+    #[test]
+    fn packages_dir_is_under_backup_dir() {
+        assert_eq!(
+            fake_dfm().packages_dir(),
+            PathBuf::from("/tmp/fake-dfm-root/backup/packages")
+        );
+    }
+
+    #[test]
+    fn config_registry_path_is_under_root() {
+        assert_eq!(
+            fake_dfm().config_registry_path(),
+            PathBuf::from("/tmp/fake-dfm-root/config.registry.json")
+        );
+    }
+
+    #[test]
+    fn package_registry_path_is_under_root() {
+        assert_eq!(
+            fake_dfm().package_registry_path(),
+            PathBuf::from("/tmp/fake-dfm-root/package.registry.json")
+        );
+    }
+
+    #[test]
+    fn encrypted_registry_path_is_under_root() {
+        assert_eq!(
+            fake_dfm().encrypted_registry_path(),
+            PathBuf::from("/tmp/fake-dfm-root/encrypted.registry.json")
+        );
+    }
+
+    #[test]
+    fn profiles_config_path_is_under_root() {
+        assert_eq!(
+            fake_dfm().profiles_config_path(),
+            PathBuf::from("/tmp/fake-dfm-root/profiles.json")
+        );
+    }
+
+    #[test]
+    fn active_profile_path_is_under_root() {
+        assert_eq!(
+            fake_dfm().active_profile_path(),
+            PathBuf::from("/tmp/fake-dfm-root/.active-profile")
+        );
+    }
+}

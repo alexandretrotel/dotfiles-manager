@@ -135,3 +135,175 @@ pub fn switch_profile(ctx: &Dfm, name: &str) -> Result<SwitchProfileOutcome> {
     set_active_profile(ctx, name)?;
     Ok(SwitchProfileOutcome::Switched(name.to_string()))
 }
+
+#[cfg(test)]
+mod tests {
+    use std::sync::MutexGuard;
+
+    use super::*;
+    use crate::profiles::active::ACTIVE_PROFILE_ENV_LOCK;
+
+    // Holds `ACTIVE_PROFILE_ENV_LOCK` for the caller's whole test body, since
+    // `create_profile`/`delete_profile`/`switch_profile` read `DFM_PROFILE`
+    // transitively and must not race the env-var tests in `active.rs`.
+    fn ctx() -> (tempfile::TempDir, Dfm, MutexGuard<'static, ()>) {
+        let guard = ACTIVE_PROFILE_ENV_LOCK.lock().unwrap();
+        unsafe {
+            std::env::remove_var("DFM_PROFILE");
+        }
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        (dir, ctx, guard)
+    }
+
+    #[test]
+    fn create_profile_registers_config_entry_and_directory() {
+        let (_dir, ctx, _guard) = ctx();
+
+        let created = create_profile(&ctx, "work", Some("work laptop".to_string())).unwrap();
+        assert_eq!(created.name, "work");
+        assert_eq!(created.description, Some("work laptop".to_string()));
+        assert!(created.directory.exists());
+        assert_eq!(created.directory, ctx.profile_dir("work"));
+
+        let config = ProfileConfig::load_or_default(&ctx);
+        assert!(config.profile_exists("work"));
+    }
+
+    #[test]
+    fn create_profile_backfills_empty_stored_version() {
+        let (_dir, ctx, _guard) = ctx();
+
+        let empty_version = ProfileConfig {
+            version: String::new(),
+            profiles: std::collections::HashMap::new(),
+        };
+        empty_version.save(&ctx.profiles_config_path()).unwrap();
+
+        create_profile(&ctx, "work", None).unwrap();
+
+        let config = ProfileConfig::load_or_default(&ctx);
+        assert_eq!(config.version, "1.0.0");
+    }
+
+    #[test]
+    fn create_profile_errors_when_directory_path_is_blocked_by_a_file() {
+        let (_dir, ctx, _guard) = ctx();
+
+        fs::create_dir_all(ctx.backup_dir().join("profiles")).unwrap();
+        fs::write(ctx.profile_dir("work"), "not a directory").unwrap();
+
+        let err = create_profile(&ctx, "work", None);
+
+        assert!(err.is_err());
+    }
+
+    #[test]
+    fn create_profile_rejects_duplicate_name() {
+        let (_dir, ctx, _guard) = ctx();
+        create_profile(&ctx, "work", None).unwrap();
+
+        let err = create_profile(&ctx, "work", None).unwrap_err();
+        assert!(matches!(err, Error::ProfileExists(name) if name == "work"));
+    }
+
+    #[test]
+    fn create_profile_rejects_empty_name() {
+        let (_dir, ctx, _guard) = ctx();
+        let err = create_profile(&ctx, "", None).unwrap_err();
+        assert!(matches!(err, Error::EmptyProfileName));
+    }
+
+    #[test]
+    fn create_profile_rejects_invalid_characters() {
+        let (_dir, ctx, _guard) = ctx();
+        let err = create_profile(&ctx, "work profile!", None).unwrap_err();
+        assert!(matches!(err, Error::InvalidProfileName(name) if name == "work profile!"));
+    }
+
+    #[test]
+    fn create_profile_allows_hyphens_and_underscores() {
+        let (_dir, ctx, _guard) = ctx();
+        assert!(create_profile(&ctx, "work-laptop_2", None).is_ok());
+    }
+
+    #[test]
+    fn delete_profile_removes_config_entry_but_keeps_directory() {
+        let (_dir, ctx, _guard) = ctx();
+        create_profile(&ctx, "work", None).unwrap();
+
+        let deleted = delete_profile(&ctx, "work").unwrap();
+        assert_eq!(deleted.name, "work");
+        assert_eq!(deleted.retained_directory, Some(ctx.profile_dir("work")));
+        assert!(ctx.profile_dir("work").exists());
+
+        let config = ProfileConfig::load_or_default(&ctx);
+        assert!(!config.profile_exists("work"));
+    }
+
+    #[test]
+    fn delete_profile_missing_profile_errors() {
+        let (_dir, ctx, _guard) = ctx();
+        let err = delete_profile(&ctx, "missing").unwrap_err();
+        assert!(matches!(err, Error::ProfileNotFound(name) if name == "missing"));
+    }
+
+    #[test]
+    fn delete_profile_active_profile_errors() {
+        let (_dir, ctx, _guard) = ctx();
+        create_profile(&ctx, "work", None).unwrap();
+        set_active_profile(&ctx, "work").unwrap();
+
+        let err = delete_profile(&ctx, "work").unwrap_err();
+        assert!(matches!(err, Error::DeleteActiveProfile(name) if name == "work"));
+    }
+
+    #[test]
+    fn switch_profile_switches_to_existing_profile() {
+        let (_dir, ctx, _guard) = ctx();
+        create_profile(&ctx, "work", None).unwrap();
+
+        let outcome = switch_profile(&ctx, "work").unwrap();
+        assert!(matches!(outcome, SwitchProfileOutcome::Switched(name) if name == "work"));
+        assert_eq!(get_active_profile_name(&ctx), Some("work".to_string()));
+    }
+
+    #[test]
+    fn switch_profile_missing_profile_errors() {
+        let (_dir, ctx, _guard) = ctx();
+        let err = switch_profile(&ctx, "missing").unwrap_err();
+        assert!(matches!(err, Error::ProfileNotFound(name) if name == "missing"));
+    }
+
+    #[test]
+    fn switch_profile_already_active_returns_already_active() {
+        let (_dir, ctx, _guard) = ctx();
+        create_profile(&ctx, "work", None).unwrap();
+        switch_profile(&ctx, "work").unwrap();
+
+        let outcome = switch_profile(&ctx, "work").unwrap();
+        assert!(matches!(outcome, SwitchProfileOutcome::AlreadyActive(name) if name == "work"));
+    }
+
+    #[test]
+    fn switch_profile_common_name_clears_active_profile() {
+        let (_dir, ctx, _guard) = ctx();
+        create_profile(&ctx, "work", None).unwrap();
+        switch_profile(&ctx, "work").unwrap();
+
+        let outcome = switch_profile(&ctx, "common").unwrap();
+        assert!(matches!(outcome, SwitchProfileOutcome::Cleared));
+        assert_eq!(get_active_profile_name(&ctx), None);
+    }
+
+    #[test]
+    fn switch_profile_none_name_clears_active_profile() {
+        let (_dir, ctx, _guard) = ctx();
+        create_profile(&ctx, "work", None).unwrap();
+        switch_profile(&ctx, "work").unwrap();
+
+        let outcome = switch_profile(&ctx, "none").unwrap();
+        assert!(matches!(outcome, SwitchProfileOutcome::Cleared));
+        assert_eq!(get_active_profile_name(&ctx), None);
+    }
+}
