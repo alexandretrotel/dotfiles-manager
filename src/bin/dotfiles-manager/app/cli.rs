@@ -1,4 +1,4 @@
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 
 #[derive(Parser)]
 #[command(
@@ -51,6 +51,9 @@ pub enum Command {
 
     #[command(about = "Delete backup directories left behind by profiles that no longer exist")]
     Prune,
+
+    #[command(about = "Open one of dfm's registry/config files in an editor")]
+    Edit(EditArgs),
 }
 
 #[derive(Subcommand)]
@@ -135,6 +138,42 @@ pub struct DoctorArgs {
         help = "Also check disabled registry entries in the backup consistency check"
     )]
     pub include_disabled: bool,
+}
+
+#[derive(Args)]
+pub struct EditArgs {
+    #[arg(help = "Which registry/config file to edit")]
+    pub registry: RegistryChoice,
+    #[arg(
+        long,
+        short = 'e',
+        help = "Editor command to launch: a name like vi, nano, or emacs, or any custom binary/command (e.g. `code --wait`). Defaults to $VISUAL, then $EDITOR, then vi."
+    )]
+    pub editor: Option<String>,
+}
+
+/// Which of dfm's own registry/config files `dfm edit` opens.
+#[derive(Clone, Copy, ValueEnum)]
+pub enum RegistryChoice {
+    #[value(help = "config.registry.json")]
+    Config,
+    #[value(help = "package.registry.json")]
+    Package,
+    #[value(help = "encrypted.registry.json")]
+    Encrypted,
+    #[value(help = "profiles.json")]
+    Profiles,
+}
+
+impl From<RegistryChoice> for dotfiles_manager::edit::RegistryTarget {
+    fn from(choice: RegistryChoice) -> Self {
+        match choice {
+            RegistryChoice::Config => dotfiles_manager::edit::RegistryTarget::Config,
+            RegistryChoice::Package => dotfiles_manager::edit::RegistryTarget::Package,
+            RegistryChoice::Encrypted => dotfiles_manager::edit::RegistryTarget::Encrypted,
+            RegistryChoice::Profiles => dotfiles_manager::edit::RegistryTarget::Profiles,
+        }
+    }
 }
 
 #[derive(Args)]
@@ -391,6 +430,77 @@ mod tests {
     fn prune_parses_with_no_args() {
         let cli = Cli::try_parse_from(["dfm", "prune"]).unwrap();
         assert!(matches!(cli.command, Some(Command::Prune)));
+    }
+
+    #[test]
+    fn edit_requires_registry_argument() {
+        let result = Cli::try_parse_from(["dfm", "edit"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn edit_rejects_unknown_registry() {
+        let result = Cli::try_parse_from(["dfm", "edit", "bogus"]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn edit_parses_registry_choice_and_defaults_editor_to_none() {
+        let cli = Cli::try_parse_from(["dfm", "edit", "config"]).unwrap();
+        match cli.command {
+            Some(Command::Edit(args)) => {
+                assert!(matches!(args.registry, RegistryChoice::Config));
+                assert_eq!(args.editor, None);
+            }
+            _ => panic!("expected Edit command"),
+        }
+    }
+
+    #[test]
+    fn edit_parses_all_registry_choices() {
+        for (arg, expected) in [
+            ("config", "Config"),
+            ("package", "Package"),
+            ("encrypted", "Encrypted"),
+            ("profiles", "Profiles"),
+        ] {
+            let cli = Cli::try_parse_from(["dfm", "edit", arg]).unwrap();
+            match cli.command {
+                Some(Command::Edit(args)) => {
+                    let actual = match args.registry {
+                        RegistryChoice::Config => "Config",
+                        RegistryChoice::Package => "Package",
+                        RegistryChoice::Encrypted => "Encrypted",
+                        RegistryChoice::Profiles => "Profiles",
+                    };
+                    assert_eq!(actual, expected);
+                }
+                _ => panic!("expected Edit command"),
+            }
+        }
+    }
+
+    #[test]
+    fn edit_parses_custom_editor_flag() {
+        let cli =
+            Cli::try_parse_from(["dfm", "edit", "profiles", "--editor", "code --wait"]).unwrap();
+        match cli.command {
+            Some(Command::Edit(args)) => {
+                assert_eq!(args.editor, Some("code --wait".to_string()));
+            }
+            _ => panic!("expected Edit command"),
+        }
+    }
+
+    #[test]
+    fn edit_parses_short_editor_flag() {
+        let cli = Cli::try_parse_from(["dfm", "edit", "config", "-e", "nano"]).unwrap();
+        match cli.command {
+            Some(Command::Edit(args)) => {
+                assert_eq!(args.editor, Some("nano".to_string()));
+            }
+            _ => panic!("expected Edit command"),
+        }
     }
 
     #[test]

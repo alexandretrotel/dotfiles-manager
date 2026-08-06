@@ -19,6 +19,7 @@
 pub mod backup;
 mod context;
 pub mod doctor;
+pub mod edit;
 pub mod encryption;
 mod error;
 pub mod git;

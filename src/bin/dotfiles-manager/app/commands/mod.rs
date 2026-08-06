@@ -1,5 +1,6 @@
 pub mod backup;
 pub mod doctor;
+pub mod edit;
 pub mod git;
 pub mod link;
 pub mod profile;
