@@ -4,7 +4,7 @@ use dotfiles_manager::Dfm;
 use dotfiles_manager::profiles::{self, ProfileConfig};
 
 use super::with_suggestions;
-use crate::cli::{ProfileActions, ProfileArgs};
+use crate::app::cli::{ProfileActions, ProfileArgs};
 
 /// Handle `dfm profile` (list/create/delete).
 pub fn run(ctx: &Dfm, args: ProfileArgs) -> Result<()> {

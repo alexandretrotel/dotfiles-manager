@@ -4,9 +4,9 @@ use dotfiles_manager::Dfm;
 use dotfiles_manager::profiles::{ActiveProfile, ProfileConfig};
 
 use super::with_suggestions;
-use crate::cli::{DoctorActions, DoctorArgs};
-use crate::output::{green, print_doctor_fix_report, print_doctor_report, red};
-use crate::prompt;
+use crate::app::cli::{DoctorActions, DoctorArgs};
+use crate::app::output::{green, print_doctor_fix_report, print_doctor_report, red};
+use crate::app::prompt;
 
 /// Handle `dfm doctor` (and `doctor fix`).
 pub fn run(ctx: &Dfm, args: DoctorArgs) -> Result<()> {

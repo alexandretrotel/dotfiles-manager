@@ -4,7 +4,7 @@ use dotfiles_manager::Dfm;
 use dotfiles_manager::profiles::{SwitchProfileOutcome, switch_profile};
 
 use super::with_suggestions;
-use crate::cli::UseArgs;
+use crate::app::cli::UseArgs;
 
 /// Handle `dfm use <profile>`.
 pub fn run(ctx: &Dfm, args: UseArgs) -> Result<()> {

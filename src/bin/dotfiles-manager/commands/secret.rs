@@ -2,9 +2,9 @@ use anstream::println;
 use color_eyre::eyre::{Result, WrapErr};
 
 use super::with_suggestions;
-use crate::cli::SecretActions;
-use crate::output::green;
-use crate::prompt;
+use crate::app::cli::SecretActions;
+use crate::app::output::green;
+use crate::app::prompt;
 
 /// Handle `dfm secret` (set/delete the stored encryption password).
 pub fn run(action: SecretActions) -> Result<()> {

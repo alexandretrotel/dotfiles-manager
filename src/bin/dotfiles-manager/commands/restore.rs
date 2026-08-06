@@ -4,9 +4,9 @@ use dotfiles_manager::Dfm;
 use dotfiles_manager::profiles::ActiveProfile;
 
 use super::with_suggestions;
-use crate::cli::RestoreArgs;
-use crate::output::{green, print_section_with_summary};
-use crate::prompt;
+use crate::app::cli::RestoreArgs;
+use crate::app::output::{green, print_section_with_summary};
+use crate::app::prompt;
 
 /// Handle `dfm restore`.
 pub fn run(ctx: &Dfm, args: RestoreArgs) -> Result<()> {

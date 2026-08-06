@@ -2,7 +2,7 @@ use color_eyre::eyre::Result;
 use dotfiles_manager::Dfm;
 
 use super::with_suggestions;
-use crate::cli::GitArgs;
+use crate::app::cli::GitArgs;
 
 /// Handle `dfm git <args>`.
 pub fn run(ctx: &Dfm, args: GitArgs) -> Result<()> {

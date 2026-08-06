@@ -4,9 +4,9 @@ use dotfiles_manager::Dfm;
 use dotfiles_manager::profiles::ActiveProfile;
 
 use super::with_suggestions;
-use crate::cli::LinkArgs;
-use crate::output::{green, print_section_with_summary};
-use crate::prompt;
+use crate::app::cli::LinkArgs;
+use crate::app::output::{green, print_section_with_summary};
+use crate::app::prompt;
 
 /// Handle `dfm link <repo>`.
 pub fn run(ctx: &Dfm, args: LinkArgs) -> Result<()> {

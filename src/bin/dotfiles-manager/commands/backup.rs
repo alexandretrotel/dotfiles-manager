@@ -5,9 +5,9 @@ use dotfiles_manager::Dfm;
 use dotfiles_manager::profiles::ActiveProfile;
 
 use super::with_suggestions;
-use crate::cli::BackupArgs;
-use crate::output::{green, print_section_with_summary};
-use crate::prompt;
+use crate::app::cli::BackupArgs;
+use crate::app::output::{green, print_section_with_summary};
+use crate::app::prompt;
 
 /// Handle `dfm backup`.
 pub fn run(ctx: &Dfm, args: BackupArgs) -> Result<()> {

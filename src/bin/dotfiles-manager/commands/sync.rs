@@ -3,8 +3,8 @@ use color_eyre::eyre::{Result, WrapErr};
 use dotfiles_manager::Dfm;
 
 use super::with_suggestions;
-use crate::cli::SyncArgs;
-use crate::output::{green, yellow};
+use crate::app::cli::SyncArgs;
+use crate::app::output::{green, yellow};
 
 /// Handle `dfm sync`.
 pub fn run(ctx: &Dfm, args: SyncArgs) -> Result<()> {
