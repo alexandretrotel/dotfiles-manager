@@ -1,6 +1,6 @@
 [package]
 name = "dotfm"
-version = "5.0.0"
+version = "1.0.0"
 edition = "2024"
 description = "A Rust-based command-line tool for dotfiles management with profiles."
 authors = ["Alexandre Trotel"]

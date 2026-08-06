@@ -773,7 +773,7 @@ dependencies = [
 
 [[package]]
 name = "dotfm"
-version = "5.0.0"
+version = "1.0.0"
 dependencies = [
  "age",
  "anstream",
