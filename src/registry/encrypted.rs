@@ -12,9 +12,9 @@ pub struct EncryptedRegistryEntry {
     pub enabled: bool,
     /// Path relative to a backup layer's encrypted directory, and the
     /// archive member name inside the encrypted bundle.
-    pub source_path: String,
+    pub backup_path: String,
     /// Absolute path on disk this entry is backed up from / restored to.
-    pub target_path: PathBuf,
+    pub original_path: PathBuf,
 }
 
 crate::impl_registry_entry_like!(EncryptedRegistryEntry);
@@ -36,8 +36,8 @@ impl Default for EncryptedRegistry {
             "ssh_config".to_string(),
             EncryptedRegistryEntry {
                 name: "SSH Config".to_string(),
-                source_path: "ssh/config".to_string(),
-                target_path: home_dir.join(".ssh/config"),
+                backup_path: "ssh/config".to_string(),
+                original_path: home_dir.join(".ssh/config"),
                 enabled: true,
                 description: Some("SSH client configuration file".to_string()),
             },
@@ -66,13 +66,13 @@ mod tests {
         let ssh_config = registry.entries.get("ssh_config").unwrap();
 
         assert_eq!(ssh_config.name, "SSH Config");
-        assert_eq!(ssh_config.source_path, "ssh/config");
+        assert_eq!(ssh_config.backup_path, "ssh/config");
         assert!(ssh_config.enabled);
         assert_eq!(
             ssh_config.description.as_deref(),
             Some("SSH client configuration file")
         );
-        assert!(ssh_config.target_path.ends_with(".ssh/config"));
+        assert!(ssh_config.original_path.ends_with(".ssh/config"));
     }
 
     #[test]

@@ -11,9 +11,9 @@ pub struct ConfigRegistryEntry {
     pub description: Option<String>,
     pub enabled: bool,
     /// Path relative to a backup layer directory (e.g. `.bashrc`).
-    pub source_path: String,
+    pub backup_path: String,
     /// Absolute path on disk this entry is backed up from / restored to.
-    pub target_path: PathBuf,
+    pub original_path: PathBuf,
 }
 
 crate::impl_registry_entry_like!(ConfigRegistryEntry);
@@ -35,8 +35,8 @@ impl Default for ConfigRegistry {
             "bashrc".to_string(),
             ConfigRegistryEntry {
                 name: "Bash Configuration".to_string(),
-                source_path: ".bashrc".to_string(),
-                target_path: home_dir.join(".bashrc"),
+                backup_path: ".bashrc".to_string(),
+                original_path: home_dir.join(".bashrc"),
                 enabled: true,
                 description: Some("Bash shell configuration file".to_string()),
             },
@@ -46,8 +46,8 @@ impl Default for ConfigRegistry {
             "zshrc".to_string(),
             ConfigRegistryEntry {
                 name: "Zsh Configuration".to_string(),
-                source_path: ".zshrc".to_string(),
-                target_path: home_dir.join(".zshrc"),
+                backup_path: ".zshrc".to_string(),
+                original_path: home_dir.join(".zshrc"),
                 enabled: true,
                 description: Some("Zsh shell configuration file".to_string()),
             },
@@ -76,13 +76,13 @@ mod tests {
         let bashrc = registry.entries.get("bashrc").unwrap();
 
         assert_eq!(bashrc.name, "Bash Configuration");
-        assert_eq!(bashrc.source_path, ".bashrc");
+        assert_eq!(bashrc.backup_path, ".bashrc");
         assert!(bashrc.enabled);
         assert_eq!(
             bashrc.description.as_deref(),
             Some("Bash shell configuration file")
         );
-        assert!(bashrc.target_path.ends_with(".bashrc"));
+        assert!(bashrc.original_path.ends_with(".bashrc"));
     }
 
     #[test]
@@ -91,13 +91,13 @@ mod tests {
         let zshrc = registry.entries.get("zshrc").unwrap();
 
         assert_eq!(zshrc.name, "Zsh Configuration");
-        assert_eq!(zshrc.source_path, ".zshrc");
+        assert_eq!(zshrc.backup_path, ".zshrc");
         assert!(zshrc.enabled);
         assert_eq!(
             zshrc.description.as_deref(),
             Some("Zsh shell configuration file")
         );
-        assert!(zshrc.target_path.ends_with(".zshrc"));
+        assert!(zshrc.original_path.ends_with(".zshrc"));
     }
 
     #[test]

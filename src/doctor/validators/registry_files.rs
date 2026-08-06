@@ -8,7 +8,7 @@ use crate::doctor::report::ValidationError;
 use crate::registry::{ConfigRegistry, PackageRegistry};
 use crate::utils::process::is_command_available;
 
-/// Checks the config and package registries parse, have no duplicate source
+/// Checks the config and package registries parse, have no duplicate backup
 /// paths, and reference package managers available on `PATH`.
 pub(super) struct RegistryFilesValidator {
     ctx: Dfm,
@@ -66,18 +66,18 @@ impl Validator for RegistryFilesValidator {
         if let Some(registry) =
             load_registry::<ConfigRegistry>(&config_registry_path, "Config", &mut errors)
         {
-            let mut source_paths: HashMap<String, Vec<String>> = HashMap::new();
+            let mut backup_paths: HashMap<String, Vec<String>> = HashMap::new();
             for (id, entry) in registry.entries.iter() {
-                source_paths
-                    .entry(entry.source_path.clone())
+                backup_paths
+                    .entry(entry.backup_path.clone())
                     .or_default()
                     .push(id.clone());
             }
-            for (path, ids) in source_paths {
+            for (path, ids) in backup_paths {
                 if ids.len() > 1 {
                     errors.push(
                         ValidationError::warning(format!(
-                            "Duplicate source path '{}' used by: {}",
+                            "Duplicate backup path '{}' used by: {}",
                             path,
                             ids.join(", ")
                         ))
@@ -123,13 +123,13 @@ mod tests {
     use crate::context::Dfm;
     use crate::registry::{ConfigRegistryEntry, PackageRegistryEntry};
 
-    fn config_entry(source_path: &str) -> ConfigRegistryEntry {
+    fn config_entry(backup_path: &str) -> ConfigRegistryEntry {
         ConfigRegistryEntry {
             name: "Test Entry".to_string(),
             description: None,
             enabled: true,
-            source_path: source_path.to_string(),
-            target_path: std::path::PathBuf::from("/tmp/does-not-matter"),
+            backup_path: backup_path.to_string(),
+            original_path: std::path::PathBuf::from("/tmp/does-not-matter"),
         }
     }
 
@@ -178,7 +178,7 @@ mod tests {
     }
 
     #[test]
-    fn valid_config_registry_with_unique_source_paths_produces_no_errors() {
+    fn valid_config_registry_with_unique_backup_paths_produces_no_errors() {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path());
 
@@ -202,7 +202,7 @@ mod tests {
     }
 
     #[test]
-    fn duplicate_source_path_produces_warning() {
+    fn duplicate_backup_path_produces_warning() {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path());
 
@@ -220,7 +220,7 @@ mod tests {
 
         assert!(errors.iter().any(|e| {
             e.severity == crate::doctor::report::Severity::Warning
-                && e.message.contains("Duplicate source path '.bashrc'")
+                && e.message.contains("Duplicate backup path '.bashrc'")
         }));
     }
 

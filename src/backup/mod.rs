@@ -76,7 +76,7 @@ mod tests {
     use std::collections::HashMap;
     use std::path::PathBuf;
 
-    fn save_config_registry(ctx: &Dfm, source_path: &str, target_path: PathBuf) {
+    fn save_config_registry(ctx: &Dfm, backup_path: &str, original_path: PathBuf) {
         let mut entries = HashMap::new();
         entries.insert(
             "entry".to_string(),
@@ -84,8 +84,8 @@ mod tests {
                 name: "Entry".to_string(),
                 description: None,
                 enabled: true,
-                source_path: source_path.to_string(),
-                target_path,
+                backup_path: backup_path.to_string(),
+                original_path,
             },
         );
         let registry = ConfigRegistry {
@@ -122,9 +122,9 @@ mod tests {
         let ctx = Dfm::with_root(dir.path().join("dfm"));
         let profile = ActiveProfile::common_only();
 
-        let source_file = dir.path().join("source.txt");
-        fs::write(&source_file, b"config content").unwrap();
-        save_config_registry(&ctx, "myfile.txt", source_file);
+        let original_file = dir.path().join("original.txt");
+        fs::write(&original_file, b"config content").unwrap();
+        save_config_registry(&ctx, "myfile.txt", original_file);
         save_safe_package_registry(&ctx);
 
         let report = run(&ctx, &profile, None).unwrap();
@@ -162,8 +162,8 @@ mod tests {
                 name: "Secret".to_string(),
                 description: None,
                 enabled: true,
-                source_path: "secret.txt".to_string(),
-                target_path: secret_file,
+                backup_path: "secret.txt".to_string(),
+                original_path: secret_file,
             },
         );
         let registry = EncryptedRegistry {

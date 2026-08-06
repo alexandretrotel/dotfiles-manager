@@ -3,14 +3,14 @@ use std::path::Path;
 
 use crate::utils::fs::sync_directory_contents;
 
-/// Restore one backup file or directory to its target. Returns a
+/// Restore one backup file or directory to its original location. Returns a
 /// human-readable reason on failure.
 pub(super) fn restore_config(
     backup_path: &Path,
-    target_path: &Path,
+    original_path: &Path,
 ) -> std::result::Result<(), String> {
     if backup_path.is_dir() {
-        return restore_directory(backup_path, target_path);
+        return restore_directory(backup_path, original_path);
     }
 
     let contents = fs::read(backup_path).map_err(|e| {
@@ -21,26 +21,26 @@ pub(super) fn restore_config(
         )
     })?;
 
-    if let Some(parent) = target_path.parent() {
+    if let Some(parent) = original_path.parent() {
         fs::create_dir_all(parent)
             .map_err(|e| format!("failed to create directory {}: {}", parent.display(), e))?;
     }
 
-    fs::write(target_path, contents)
-        .map_err(|e| format!("failed to write {}: {}", target_path.display(), e))
+    fs::write(original_path, contents)
+        .map_err(|e| format!("failed to write {}: {}", original_path.display(), e))
 }
 
-/// Mirror `backup_path`'s contents into `target_path`.
-fn restore_directory(backup_path: &Path, target_path: &Path) -> std::result::Result<(), String> {
-    fs::create_dir_all(target_path).map_err(|e| {
+/// Mirror `backup_path`'s contents into `original_path`.
+fn restore_directory(backup_path: &Path, original_path: &Path) -> std::result::Result<(), String> {
+    fs::create_dir_all(original_path).map_err(|e| {
         format!(
-            "failed to create target directory {}: {}",
-            target_path.display(),
+            "failed to create original directory {}: {}",
+            original_path.display(),
             e
         )
     })?;
 
-    sync_directory_contents(backup_path, target_path).map_err(|e| {
+    sync_directory_contents(backup_path, original_path).map_err(|e| {
         format!(
             "failed to restore directory {}: {}",
             backup_path.display(),
@@ -59,11 +59,11 @@ mod tests {
         let backup_path = dir.path().join("backup.txt");
         fs::write(&backup_path, b"restored content").unwrap();
 
-        let target_path = dir.path().join("nested/deep/target.txt");
+        let original_path = dir.path().join("nested/deep/original.txt");
 
-        restore_config(&backup_path, &target_path).unwrap();
+        restore_config(&backup_path, &original_path).unwrap();
 
-        assert_eq!(fs::read(&target_path).unwrap(), b"restored content");
+        assert_eq!(fs::read(&original_path).unwrap(), b"restored content");
     }
 
     #[test]
@@ -74,41 +74,41 @@ mod tests {
         fs::write(backup_path.join("top.txt"), b"top").unwrap();
         fs::write(backup_path.join("sub/inner.txt"), b"inner").unwrap();
 
-        let target_path = dir.path().join("target_dir");
+        let original_path = dir.path().join("original_dir");
 
-        restore_config(&backup_path, &target_path).unwrap();
+        restore_config(&backup_path, &original_path).unwrap();
 
-        assert_eq!(fs::read(target_path.join("top.txt")).unwrap(), b"top");
+        assert_eq!(fs::read(original_path.join("top.txt")).unwrap(), b"top");
         assert_eq!(
-            fs::read(target_path.join("sub/inner.txt")).unwrap(),
+            fs::read(original_path.join("sub/inner.txt")).unwrap(),
             b"inner"
         );
     }
 
     #[test]
-    fn restoring_a_directory_prunes_stale_target_entries() {
+    fn restoring_a_directory_prunes_stale_original_entries() {
         let dir = tempfile::tempdir().unwrap();
         let backup_path = dir.path().join("backup_dir");
         fs::create_dir_all(&backup_path).unwrap();
         fs::write(backup_path.join("keep.txt"), b"keep").unwrap();
 
-        let target_path = dir.path().join("target_dir");
-        fs::create_dir_all(&target_path).unwrap();
-        fs::write(target_path.join("stale.txt"), b"stale").unwrap();
+        let original_path = dir.path().join("original_dir");
+        fs::create_dir_all(&original_path).unwrap();
+        fs::write(original_path.join("stale.txt"), b"stale").unwrap();
 
-        restore_config(&backup_path, &target_path).unwrap();
+        restore_config(&backup_path, &original_path).unwrap();
 
-        assert!(target_path.join("keep.txt").exists());
-        assert!(!target_path.join("stale.txt").exists());
+        assert!(original_path.join("keep.txt").exists());
+        assert!(!original_path.join("stale.txt").exists());
     }
 
     #[test]
     fn missing_backup_file_returns_readable_error() {
         let dir = tempfile::tempdir().unwrap();
         let backup_path = dir.path().join("missing.txt");
-        let target_path = dir.path().join("target.txt");
+        let original_path = dir.path().join("original.txt");
 
-        let err = restore_config(&backup_path, &target_path).unwrap_err();
+        let err = restore_config(&backup_path, &original_path).unwrap_err();
         assert!(err.contains("failed to read backup file"));
     }
 }

@@ -18,8 +18,8 @@ pub(super) fn backup_entries(ctx: &Dfm, configs_path: &Path) -> Result<SectionRe
     let mut report = SectionReport::default();
 
     for (id, entry) in enabled_entries {
-        let target_path = &entry.target_path;
-        let backup_destination = configs_path.join(&entry.source_path);
+        let original_path = &entry.original_path;
+        let backup_destination = configs_path.join(&entry.backup_path);
 
         let entry_result: Result<Option<String>> = (|| {
             if let Some(parent) = backup_destination.parent() {
@@ -28,19 +28,19 @@ pub(super) fn backup_entries(ctx: &Dfm, configs_path: &Path) -> Result<SectionRe
                 })?;
             }
 
-            if target_path.is_dir() {
-                sync_directory(target_path, &backup_destination).wrap_err_with(|| {
+            if original_path.is_dir() {
+                sync_directory(original_path, &backup_destination).wrap_err_with(|| {
                     format!(
                         "Copy directory {} -> {}",
-                        target_path.display(),
+                        original_path.display(),
                         backup_destination.display()
                     )
                 })
             } else {
-                sync_file(target_path, &backup_destination).wrap_err_with(|| {
+                sync_file(original_path, &backup_destination).wrap_err_with(|| {
                     format!(
                         "Copy file {} -> {}",
-                        target_path.display(),
+                        original_path.display(),
                         backup_destination.display()
                     )
                 })
@@ -48,9 +48,9 @@ pub(super) fn backup_entries(ctx: &Dfm, configs_path: &Path) -> Result<SectionRe
         })();
 
         report.outcomes.push(match entry_result {
-            Ok(Some(note)) => RegistryEntryOutcome::done_with_note(id, &entry.source_path, note),
-            Ok(None) => RegistryEntryOutcome::done(id, &entry.source_path),
-            Err(e) => RegistryEntryOutcome::skipped(id, &entry.source_path, e.to_string()),
+            Ok(Some(note)) => RegistryEntryOutcome::done_with_note(id, &entry.backup_path, note),
+            Ok(None) => RegistryEntryOutcome::done(id, &entry.backup_path),
+            Err(e) => RegistryEntryOutcome::skipped(id, &entry.backup_path, e.to_string()),
         });
     }
 
@@ -64,13 +64,13 @@ mod tests {
     use std::collections::HashMap;
     use std::path::PathBuf;
 
-    fn entry(source_path: &str, target_path: PathBuf) -> ConfigRegistryEntry {
+    fn entry(backup_path: &str, original_path: PathBuf) -> ConfigRegistryEntry {
         ConfigRegistryEntry {
-            name: source_path.to_string(),
+            name: backup_path.to_string(),
             description: None,
             enabled: true,
-            source_path: source_path.to_string(),
-            target_path,
+            backup_path: backup_path.to_string(),
+            original_path,
         }
     }
 
@@ -86,11 +86,11 @@ mod tests {
     fn backs_up_a_plain_file_entry() {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path().join("dfm"));
-        let target = dir.path().join("source.txt");
-        fs::write(&target, b"hello").unwrap();
+        let original = dir.path().join("original.txt");
+        fs::write(&original, b"hello").unwrap();
 
         let mut entries = HashMap::new();
-        entries.insert("file".to_string(), entry("file.txt", target.clone()));
+        entries.insert("file".to_string(), entry("file.txt", original.clone()));
         save_registry(&ctx, entries);
 
         let configs_path = dir.path().join("configs");
@@ -106,13 +106,13 @@ mod tests {
     fn backs_up_a_directory_entry_with_nested_files() {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path().join("dfm"));
-        let target = dir.path().join("source_dir");
-        fs::create_dir_all(target.join("nested")).unwrap();
-        fs::write(target.join("top.txt"), b"top").unwrap();
-        fs::write(target.join("nested/inner.txt"), b"inner").unwrap();
+        let original = dir.path().join("original_dir");
+        fs::create_dir_all(original.join("nested")).unwrap();
+        fs::write(original.join("top.txt"), b"top").unwrap();
+        fs::write(original.join("nested/inner.txt"), b"inner").unwrap();
 
         let mut entries = HashMap::new();
-        entries.insert("dir".to_string(), entry("mydir", target.clone()));
+        entries.insert("dir".to_string(), entry("mydir", original.clone()));
         save_registry(&ctx, entries);
 
         let configs_path = dir.path().join("configs");
@@ -132,13 +132,16 @@ mod tests {
     }
 
     #[test]
-    fn missing_target_path_is_skipped_not_fatal() {
+    fn missing_original_path_is_skipped_not_fatal() {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path().join("dfm"));
-        let missing_target = dir.path().join("does-not-exist.txt");
+        let missing_original = dir.path().join("does-not-exist.txt");
 
         let mut entries = HashMap::new();
-        entries.insert("missing".to_string(), entry("missing.txt", missing_target));
+        entries.insert(
+            "missing".to_string(),
+            entry("missing.txt", missing_original),
+        );
         save_registry(&ctx, entries);
 
         let configs_path = dir.path().join("configs");

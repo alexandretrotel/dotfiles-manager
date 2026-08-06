@@ -10,7 +10,7 @@ use std::path::Path;
 
 use age::secrecy::SecretString;
 pub use bundle::{
-    TarEntryRef, TarMemberMap, TarSourceEntry, create_temp_file, enumerate_tar_files,
+    TarEntryRef, TarMemberMap, TarOriginalEntry, create_temp_file, enumerate_tar_files,
     load_tar_files, set_private_file_permissions, write_tar_archive,
 };
 

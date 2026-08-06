@@ -79,8 +79,8 @@ pub(super) fn restore_encrypted_configs(
 }
 
 /// Write each enabled entry's contents from the decrypted bundle's member
-/// map to its target path. A `source_path` matching a member exactly is
-/// restored as a single file; one only matching as a `source_path/`
+/// map to its original path. A `backup_path` matching a member exactly is
+/// restored as a single file; one only matching as a `backup_path/`
 /// prefix is restored as a directory tree.
 fn restore_from_bundle_members(
     enabled_entries: &[(String, EncryptedRegistryEntry)],
@@ -88,19 +88,19 @@ fn restore_from_bundle_members(
     report: &mut SectionReport,
 ) {
     for (id, entry) in enabled_entries {
-        let target_path = &entry.target_path;
+        let original_path = &entry.original_path;
 
-        let result = if members.contains_key(&entry.source_path) {
-            restore_file(target_path, &members[&entry.source_path])
+        let result = if members.contains_key(&entry.backup_path) {
+            restore_file(original_path, &members[&entry.backup_path])
         } else {
-            restore_dir(target_path, &entry.source_path, members)
+            restore_dir(original_path, &entry.backup_path, members)
         };
 
         let outcome = result.map_or_else(
-            |reason| RegistryEntryOutcome::skipped(id, &entry.source_path, reason),
+            |reason| RegistryEntryOutcome::skipped(id, &entry.backup_path, reason),
             |note| match note {
-                Some(note) => RegistryEntryOutcome::done_with_note(id, &entry.source_path, note),
-                None => RegistryEntryOutcome::done(id, &entry.source_path),
+                Some(note) => RegistryEntryOutcome::done_with_note(id, &entry.backup_path, note),
+                None => RegistryEntryOutcome::done(id, &entry.backup_path),
             },
         );
 
@@ -108,34 +108,34 @@ fn restore_from_bundle_members(
     }
 }
 
-/// Write a single file entry's contents to `target_path`.
-fn restore_file(target_path: &Path, contents: &[u8]) -> Result<Option<String>, String> {
-    if let Some(parent) = target_path.parent() {
+/// Write a single file entry's contents to `original_path`.
+fn restore_file(original_path: &Path, contents: &[u8]) -> Result<Option<String>, String> {
+    if let Some(parent) = original_path.parent() {
         fs::create_dir_all(parent)
             .map_err(|e| format!("failed to create directory {}: {}", parent.display(), e))?;
     }
 
-    fs::write(target_path, contents)
-        .map_err(|e| format!("failed to write {}: {}", target_path.display(), e))?;
+    fs::write(original_path, contents)
+        .map_err(|e| format!("failed to write {}: {}", original_path.display(), e))?;
 
-    match set_private_file_permissions(target_path) {
+    match set_private_file_permissions(original_path) {
         Ok(()) => Ok(None),
         Err(e) => Ok(Some(format!(
             "restored, but failed to set permissions on {}: {}",
-            target_path.display(),
+            original_path.display(),
             e
         ))),
     }
 }
 
-/// Write every bundle member prefixed `{source_prefix}/` into `target_path`,
+/// Write every bundle member prefixed `{backup_prefix}/` into `original_path`,
 /// recreating the relative directory structure.
 fn restore_dir(
-    target_path: &Path,
-    source_prefix: &str,
+    original_path: &Path,
+    backup_prefix: &str,
     members: &TarMemberMap,
 ) -> Result<Option<String>, String> {
-    let prefix = format!("{source_prefix}/");
+    let prefix = format!("{backup_prefix}/");
     let mut written = 0usize;
     let mut warnings = Vec::new();
 
@@ -143,9 +143,9 @@ fn restore_dir(
         let Some(relative) = member_path.strip_prefix(&prefix) else {
             continue;
         };
-        let destination = target_path.join(relative);
+        let destination = original_path.join(relative);
 
-        if let Err(e) = fs::create_dir_all(destination.parent().unwrap_or(target_path)) {
+        if let Err(e) = fs::create_dir_all(destination.parent().unwrap_or(original_path)) {
             warnings.push(format!(
                 "failed to create directory for {}: {}",
                 destination.display(),
@@ -182,13 +182,13 @@ mod tests {
     use std::collections::HashMap;
     use std::path::PathBuf;
 
-    fn entry(source_path: &str, target_path: PathBuf) -> EncryptedRegistryEntry {
+    fn entry(backup_path: &str, original_path: PathBuf) -> EncryptedRegistryEntry {
         EncryptedRegistryEntry {
-            name: source_path.to_string(),
+            name: backup_path.to_string(),
             description: None,
             enabled: true,
-            source_path: source_path.to_string(),
-            target_path,
+            backup_path: backup_path.to_string(),
+            original_path,
         }
     }
 
@@ -207,17 +207,17 @@ mod tests {
         let profile = ActiveProfile::common_only();
         let password = SecretString::from("pw".to_string());
 
-        let target = dir.path().join("restored.txt");
+        let original = dir.path().join("restored.txt");
         let mut entries = HashMap::new();
-        entries.insert("secret".to_string(), entry("secret.txt", target.clone()));
+        entries.insert("secret".to_string(), entry("secret.txt", original.clone()));
         save_registry(&ctx, entries);
 
-        let source_file = dir.path().join("plain-secret.txt");
-        fs::write(&source_file, b"top secret").unwrap();
+        let original_file = dir.path().join("plain-secret.txt");
+        fs::write(&original_file, b"top secret").unwrap();
         let bundle_dir = profile.encrypted_backup_path(&ctx);
         fs::create_dir_all(&bundle_dir).unwrap();
         let tar_temp = create_temp_file("test-bundle").unwrap();
-        write_tar_archive(tar_temp.path(), &[("secret.txt", source_file.as_path())]).unwrap();
+        write_tar_archive(tar_temp.path(), &[("secret.txt", original_file.as_path())]).unwrap();
         encrypt_file(
             tar_temp.path(),
             &bundle_dir.join(ENCRYPTED_BUNDLE_FILE),
@@ -228,7 +228,7 @@ mod tests {
         let report = restore_encrypted_configs(&ctx, &profile, &password);
 
         assert_eq!(report.succeeded(), 1);
-        assert_eq!(fs::read(&target).unwrap(), b"top secret");
+        assert_eq!(fs::read(&original).unwrap(), b"top secret");
     }
 
     #[test]
@@ -241,7 +241,7 @@ mod tests {
         let mut entries = HashMap::new();
         entries.insert(
             "secret".to_string(),
-            entry("secret.txt", dir.path().join("target.txt")),
+            entry("secret.txt", dir.path().join("original.txt")),
         );
         save_registry(&ctx, entries);
 
@@ -269,82 +269,82 @@ mod tests {
     #[test]
     fn restore_dir_writes_nested_files_from_matching_prefix() {
         let dir = tempfile::tempdir().unwrap();
-        let target = dir.path().join("target_dir");
+        let original = dir.path().join("original_dir");
 
         let mut members = HashMap::new();
         members.insert("mydir/a.txt".to_string(), b"a".to_vec());
         members.insert("mydir/sub/b.txt".to_string(), b"b".to_vec());
         members.insert("otherdir/c.txt".to_string(), b"c".to_vec());
 
-        let note = restore_dir(&target, "mydir", &members).unwrap();
+        let note = restore_dir(&original, "mydir", &members).unwrap();
         assert!(note.is_none());
 
-        assert_eq!(fs::read(target.join("a.txt")).unwrap(), b"a");
-        assert_eq!(fs::read(target.join("sub/b.txt")).unwrap(), b"b");
-        assert!(!target.join("c.txt").exists());
+        assert_eq!(fs::read(original.join("a.txt")).unwrap(), b"a");
+        assert_eq!(fs::read(original.join("sub/b.txt")).unwrap(), b"b");
+        assert!(!original.join("c.txt").exists());
     }
 
     #[test]
     fn restore_dir_errors_when_prefix_not_in_bundle() {
         let dir = tempfile::tempdir().unwrap();
-        let target = dir.path().join("target_dir");
+        let original = dir.path().join("original_dir");
         let members: TarMemberMap = HashMap::new();
 
-        let err = restore_dir(&target, "missing-prefix", &members).unwrap_err();
+        let err = restore_dir(&original, "missing-prefix", &members).unwrap_err();
         assert_eq!(err, "not in encrypted bundle");
     }
 
     #[test]
     fn restore_dir_reports_note_when_a_member_path_collides_with_a_file() {
         let dir = tempfile::tempdir().unwrap();
-        let target = dir.path().join("target_dir");
+        let original = dir.path().join("original_dir");
         // Pre-create a regular file where a member needs a directory
         // (`sub`), so `fs::create_dir_all` for that member fails while the
         // rest of the tree still restores.
-        fs::create_dir_all(&target).unwrap();
-        fs::write(target.join("sub"), b"blocking file").unwrap();
+        fs::create_dir_all(&original).unwrap();
+        fs::write(original.join("sub"), b"blocking file").unwrap();
 
         let mut members = HashMap::new();
         members.insert("mydir/ok.txt".to_string(), b"fine".to_vec());
         members.insert("mydir/sub/blocked.txt".to_string(), b"nope".to_vec());
 
-        let note = restore_dir(&target, "mydir", &members).unwrap().unwrap();
+        let note = restore_dir(&original, "mydir", &members).unwrap().unwrap();
 
         assert!(note.contains("failed to create directory for"));
-        assert_eq!(fs::read(target.join("ok.txt")).unwrap(), b"fine");
-        assert!(!target.join("sub/blocked.txt").exists());
+        assert_eq!(fs::read(original.join("ok.txt")).unwrap(), b"fine");
+        assert!(!original.join("sub/blocked.txt").exists());
     }
 
     #[test]
-    fn restore_dir_reports_note_when_write_target_is_a_directory() {
+    fn restore_dir_reports_note_when_write_original_is_a_directory() {
         let dir = tempfile::tempdir().unwrap();
-        let target = dir.path().join("target_dir");
+        let original = dir.path().join("original_dir");
         // Pre-create a directory where a member needs to write a plain
         // file, so `fs::write` for that member fails.
-        fs::create_dir_all(target.join("blocked")).unwrap();
+        fs::create_dir_all(original.join("blocked")).unwrap();
 
         let mut members = HashMap::new();
         members.insert("mydir/ok.txt".to_string(), b"fine".to_vec());
         members.insert("mydir/blocked".to_string(), b"nope".to_vec());
 
-        let note = restore_dir(&target, "mydir", &members).unwrap().unwrap();
+        let note = restore_dir(&original, "mydir", &members).unwrap().unwrap();
 
         assert!(note.contains("failed to write"));
-        assert_eq!(fs::read(target.join("ok.txt")).unwrap(), b"fine");
+        assert_eq!(fs::read(original.join("ok.txt")).unwrap(), b"fine");
     }
 
     #[test]
     fn restore_from_bundle_members_surfaces_a_partial_failure_as_done_with_note() {
         let dir = tempfile::tempdir().unwrap();
-        let target = dir.path().join("target_dir");
-        fs::create_dir_all(&target).unwrap();
-        fs::write(target.join("sub"), b"blocking file").unwrap();
+        let original = dir.path().join("original_dir");
+        fs::create_dir_all(&original).unwrap();
+        fs::write(original.join("sub"), b"blocking file").unwrap();
 
         let mut members = HashMap::new();
         members.insert("mydir/ok.txt".to_string(), b"fine".to_vec());
         members.insert("mydir/sub/blocked.txt".to_string(), b"nope".to_vec());
 
-        let enabled_entries = vec![("dir_id".to_string(), entry("mydir", target.clone()))];
+        let enabled_entries = vec![("dir_id".to_string(), entry("mydir", original.clone()))];
         let mut report = SectionReport::default();
 
         restore_from_bundle_members(&enabled_entries, &members, &mut report);
@@ -366,15 +366,15 @@ mod tests {
         let profile = ActiveProfile::common_only();
         let password = SecretString::from("pw".to_string());
 
-        let target = dir.path().join("restored_dir");
+        let original = dir.path().join("restored_dir");
         let mut entries = HashMap::new();
-        entries.insert("ssh_keys".to_string(), entry("ssh/keys", target.clone()));
+        entries.insert("ssh_keys".to_string(), entry("ssh/keys", original.clone()));
         save_registry(&ctx, entries);
 
-        let source_a = dir.path().join("id_rsa");
-        let source_b = dir.path().join("id_rsa.pub");
-        fs::write(&source_a, b"private key").unwrap();
-        fs::write(&source_b, b"public key").unwrap();
+        let original_a = dir.path().join("id_rsa");
+        let original_b = dir.path().join("id_rsa.pub");
+        fs::write(&original_a, b"private key").unwrap();
+        fs::write(&original_b, b"public key").unwrap();
 
         let bundle_dir = profile.encrypted_backup_path(&ctx);
         fs::create_dir_all(&bundle_dir).unwrap();
@@ -382,8 +382,8 @@ mod tests {
         write_tar_archive(
             tar_temp.path(),
             &[
-                ("ssh/keys/id_rsa", source_a.as_path()),
-                ("ssh/keys/id_rsa.pub", source_b.as_path()),
+                ("ssh/keys/id_rsa", original_a.as_path()),
+                ("ssh/keys/id_rsa.pub", original_b.as_path()),
             ],
         )
         .unwrap();
@@ -397,8 +397,11 @@ mod tests {
         let report = restore_encrypted_configs(&ctx, &profile, &password);
 
         assert_eq!(report.succeeded(), 1);
-        assert_eq!(fs::read(target.join("id_rsa")).unwrap(), b"private key");
-        assert_eq!(fs::read(target.join("id_rsa.pub")).unwrap(), b"public key");
+        assert_eq!(fs::read(original.join("id_rsa")).unwrap(), b"private key");
+        assert_eq!(
+            fs::read(original.join("id_rsa.pub")).unwrap(),
+            b"public key"
+        );
     }
 
     #[test]
@@ -408,21 +411,21 @@ mod tests {
         let profile = ActiveProfile::common_only();
         let password = SecretString::from("pw".to_string());
 
-        let target = dir.path().join("restored.txt");
+        let original = dir.path().join("restored.txt");
         let mut entries = HashMap::new();
         entries.insert(
             "missing".to_string(),
-            entry("not-in-bundle.txt", target.clone()),
+            entry("not-in-bundle.txt", original.clone()),
         );
         save_registry(&ctx, entries);
 
-        // Bundle exists but has no member matching the entry's source path.
-        let other_source = dir.path().join("other.txt");
-        fs::write(&other_source, b"unrelated content").unwrap();
+        // Bundle exists but has no member matching the entry's backup path.
+        let other_original = dir.path().join("other.txt");
+        fs::write(&other_original, b"unrelated content").unwrap();
         let bundle_dir = profile.encrypted_backup_path(&ctx);
         fs::create_dir_all(&bundle_dir).unwrap();
         let tar_temp = create_temp_file("test-bundle-missing-member").unwrap();
-        write_tar_archive(tar_temp.path(), &[("other.txt", other_source.as_path())]).unwrap();
+        write_tar_archive(tar_temp.path(), &[("other.txt", other_original.as_path())]).unwrap();
         encrypt_file(
             tar_temp.path(),
             &bundle_dir.join(ENCRYPTED_BUNDLE_FILE),
@@ -434,7 +437,7 @@ mod tests {
 
         assert_eq!(report.succeeded(), 0);
         assert_eq!(report.skipped(), 1);
-        assert!(!target.exists());
+        assert!(!original.exists());
     }
 
     #[test]
@@ -447,7 +450,7 @@ mod tests {
         let mut entries = HashMap::new();
         entries.insert(
             "secret".to_string(),
-            entry("secret.txt", dir.path().join("target.txt")),
+            entry("secret.txt", dir.path().join("original.txt")),
         );
         save_registry(&ctx, entries);
 
@@ -477,7 +480,7 @@ mod tests {
         let mut entries = HashMap::new();
         entries.insert(
             "secret".to_string(),
-            entry("secret.txt", dir.path().join("target.txt")),
+            entry("secret.txt", dir.path().join("original.txt")),
         );
         save_registry(&ctx, entries);
 
@@ -507,11 +510,11 @@ mod tests {
     #[test]
     fn restore_file_creates_missing_parent_directories() {
         let dir = tempfile::tempdir().unwrap();
-        let target = dir.path().join("nested/deep/target.txt");
+        let original = dir.path().join("nested/deep/original.txt");
 
-        let note = restore_file(&target, b"nested content").unwrap();
+        let note = restore_file(&original, b"nested content").unwrap();
 
         assert!(note.is_none());
-        assert_eq!(fs::read(&target).unwrap(), b"nested content");
+        assert_eq!(fs::read(&original).unwrap(), b"nested content");
     }
 }

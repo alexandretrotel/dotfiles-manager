@@ -6,15 +6,15 @@ use sha2::{Digest, Sha256};
 
 use crate::context::{Dfm, ENCRYPTED_BUNDLE_FILE};
 use crate::encryption::{
-    TarEntryRef, TarSourceEntry, create_temp_file, encrypt_file, enumerate_tar_files,
+    TarEntryRef, TarOriginalEntry, create_temp_file, encrypt_file, enumerate_tar_files,
     write_tar_archive,
 };
 use crate::error::{Result, WrapErr};
 use crate::registry::EncryptedRegistry;
 use crate::report::{RegistryEntryOutcome, SectionReport};
 
-/// One registry entry's queued tar members: `(id, label, [(archive name, source file)])`.
-type ArchiveEntry = (String, String, Vec<TarSourceEntry>);
+/// One registry entry's queued tar members: `(id, label, [(archive name, original file)])`.
+type ArchiveEntry = (String, String, Vec<TarOriginalEntry>);
 
 /// Name of the plaintext hash sidecar written next to the encrypted bundle.
 /// `age` encryption is non-deterministic (fresh salt/nonce every run), so
@@ -50,32 +50,32 @@ pub(super) fn backup_encrypted_entries(
     let mut to_archive: Vec<ArchiveEntry> = Vec::new();
 
     for (id, entry) in enabled_entries {
-        if !entry.target_path.exists() {
+        if !entry.original_path.exists() {
             report.outcomes.push(RegistryEntryOutcome::skipped(
                 id,
-                &entry.source_path,
-                format!("missing target {}", entry.target_path.display()),
+                &entry.backup_path,
+                format!("missing original {}", entry.original_path.display()),
             ));
             continue;
         }
 
-        let members = if entry.target_path.is_dir() {
-            match enumerate_tar_files(&entry.source_path, &entry.target_path) {
+        let members = if entry.original_path.is_dir() {
+            match enumerate_tar_files(&entry.backup_path, &entry.original_path) {
                 Ok(members) => members,
                 Err(e) => {
                     report.outcomes.push(RegistryEntryOutcome::skipped(
                         id,
-                        &entry.source_path,
+                        &entry.backup_path,
                         format!("could not read directory: {e}"),
                     ));
                     continue;
                 }
             }
         } else {
-            vec![(entry.source_path.clone(), entry.target_path.clone())]
+            vec![(entry.backup_path.clone(), entry.original_path.clone())]
         };
 
-        to_archive.push((id.clone(), entry.source_path.clone(), members));
+        to_archive.push((id.clone(), entry.backup_path.clone(), members));
     }
 
     to_archive.sort_by(|a, b| a.1.cmp(&b.1));
@@ -110,10 +110,10 @@ pub(super) fn backup_encrypted_entries(
             .wrap_err_with(|| format!("Write bundle hash to {}", hash_destination.display()))?;
     }
 
-    for (id, source_path, _) in &to_archive {
+    for (id, backup_path, _) in &to_archive {
         report
             .outcomes
-            .push(RegistryEntryOutcome::done(id.clone(), source_path.clone()));
+            .push(RegistryEntryOutcome::done(id.clone(), backup_path.clone()));
     }
 
     Ok(report)
@@ -127,13 +127,13 @@ mod tests {
     use std::collections::HashMap;
     use std::path::PathBuf;
 
-    fn entry(source_path: &str, target_path: PathBuf) -> EncryptedRegistryEntry {
+    fn entry(backup_path: &str, original_path: PathBuf) -> EncryptedRegistryEntry {
         EncryptedRegistryEntry {
-            name: source_path.to_string(),
+            name: backup_path.to_string(),
             description: None,
             enabled: true,
-            source_path: source_path.to_string(),
-            target_path,
+            backup_path: backup_path.to_string(),
+            original_path,
         }
     }
 
@@ -149,11 +149,11 @@ mod tests {
     fn backs_up_a_file_entry_into_encrypted_bundle() {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path().join("dfm"));
-        let target = dir.path().join("secret.txt");
-        fs::write(&target, b"top secret").unwrap();
+        let original = dir.path().join("secret.txt");
+        fs::write(&original, b"top secret").unwrap();
 
         let mut entries = HashMap::new();
-        entries.insert("secret".to_string(), entry("secret.txt", target));
+        entries.insert("secret".to_string(), entry("secret.txt", original));
         save_registry(&ctx, entries);
 
         let encrypted_backup_path = dir.path().join("encrypted");
@@ -176,11 +176,11 @@ mod tests {
     fn rerunning_with_unchanged_content_does_not_rewrite_the_bundle() {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path().join("dfm"));
-        let target = dir.path().join("secret.txt");
-        fs::write(&target, b"top secret").unwrap();
+        let original = dir.path().join("secret.txt");
+        fs::write(&original, b"top secret").unwrap();
 
         let mut entries = HashMap::new();
-        entries.insert("secret".to_string(), entry("secret.txt", target));
+        entries.insert("secret".to_string(), entry("secret.txt", original));
         save_registry(&ctx, entries);
 
         let encrypted_backup_path = dir.path().join("encrypted");
@@ -201,11 +201,11 @@ mod tests {
     fn rerunning_with_changed_content_rewrites_the_bundle() {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path().join("dfm"));
-        let target = dir.path().join("secret.txt");
-        fs::write(&target, b"top secret").unwrap();
+        let original = dir.path().join("secret.txt");
+        fs::write(&original, b"top secret").unwrap();
 
         let mut entries = HashMap::new();
-        entries.insert("secret".to_string(), entry("secret.txt", target.clone()));
+        entries.insert("secret".to_string(), entry("secret.txt", original.clone()));
         save_registry(&ctx, entries);
 
         let encrypted_backup_path = dir.path().join("encrypted");
@@ -216,7 +216,7 @@ mod tests {
         let bundle = encrypted_backup_path.join(ENCRYPTED_BUNDLE_FILE);
         let first_ciphertext = fs::read(&bundle).unwrap();
 
-        fs::write(&target, b"top secret v2").unwrap();
+        fs::write(&original, b"top secret v2").unwrap();
         backup_encrypted_entries(&ctx, &encrypted_backup_path, &password).unwrap();
 
         assert_ne!(fs::read(&bundle).unwrap(), first_ciphertext);
@@ -231,11 +231,11 @@ mod tests {
     fn removing_the_last_entry_deletes_the_hash_sidecar_too() {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path().join("dfm"));
-        let target = dir.path().join("secret.txt");
-        fs::write(&target, b"top secret").unwrap();
+        let original = dir.path().join("secret.txt");
+        fs::write(&original, b"top secret").unwrap();
 
         let mut entries = HashMap::new();
-        entries.insert("secret".to_string(), entry("secret.txt", target));
+        entries.insert("secret".to_string(), entry("secret.txt", original));
         save_registry(&ctx, entries);
 
         let encrypted_backup_path = dir.path().join("encrypted");
@@ -253,7 +253,7 @@ mod tests {
     }
 
     #[test]
-    fn missing_target_path_is_skipped_and_no_bundle_written() {
+    fn missing_original_path_is_skipped_and_no_bundle_written() {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path().join("dfm"));
         let missing = dir.path().join("nope.txt");
@@ -277,13 +277,13 @@ mod tests {
     fn backs_up_a_directory_entry_with_nested_files() {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path().join("dfm"));
-        let target = dir.path().join("secrets_dir");
-        fs::create_dir_all(target.join("nested")).unwrap();
-        fs::write(target.join("a.txt"), b"a").unwrap();
-        fs::write(target.join("nested/b.txt"), b"b").unwrap();
+        let original = dir.path().join("secrets_dir");
+        fs::create_dir_all(original.join("nested")).unwrap();
+        fs::write(original.join("a.txt"), b"a").unwrap();
+        fs::write(original.join("nested/b.txt"), b"b").unwrap();
 
         let mut entries = HashMap::new();
-        entries.insert("dir".to_string(), entry("secrets", target));
+        entries.insert("dir".to_string(), entry("secrets", original));
         save_registry(&ctx, entries);
 
         let encrypted_backup_path = dir.path().join("encrypted");

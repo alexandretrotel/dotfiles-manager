@@ -64,18 +64,18 @@ impl Validator for BackupConsistencyValidator {
         };
 
         for (id, entry) in config_registry.get_entries(self.include_disabled) {
-            if !entry.target_path.exists() {
+            if !entry.original_path.exists() {
                 continue;
             }
 
-            let Some(resolved) = self.profile.resolve_source(ctx, &entry.source_path) else {
+            let Some(resolved) = self.profile.resolve_backup_path(ctx, &entry.backup_path) else {
                 continue;
             };
             if !resolved.path.exists() {
                 continue;
             }
 
-            if entry.target_path.is_dir() || resolved.path.is_dir() {
+            if entry.original_path.is_dir() || resolved.path.is_dir() {
                 check_plain_dir_entry(id, entry, &resolved.path, &mut errors);
                 continue;
             }
@@ -88,7 +88,7 @@ impl Validator for BackupConsistencyValidator {
                 }
             };
             let current_content =
-                match read_bytes(&entry.target_path, "current file", &entry.name, id) {
+                match read_bytes(&entry.original_path, "current file", &entry.name, id) {
                     Ok(c) => c,
                     Err(warning) => {
                         errors.push(warning);
@@ -121,7 +121,7 @@ impl Validator for BackupConsistencyValidator {
 
         let encrypted_candidates: Vec<_> = encrypted_registry
             .get_entries(self.include_disabled)
-            .filter(|(_, e)| e.target_path.exists())
+            .filter(|(_, e)| e.original_path.exists())
             .map(|(id, e)| (id.clone(), e.clone()))
             .collect();
 
@@ -181,7 +181,7 @@ fn report_if_differs(
     })
 }
 
-/// Compare every file under a directory config entry's `target_path`
+/// Compare every file under a directory config entry's `original_path`
 /// against its counterpart in the plaintext backup layer, recursively, and
 /// flag files present on only one side. A read failure on one file is
 /// reported as a warning and does not stop the rest of the comparison.
@@ -191,12 +191,12 @@ fn check_plain_dir_entry(
     backup_dir: &Path,
     errors: &mut Vec<ValidationError>,
 ) {
-    let current_entries = match enumerate_tar_files(&entry.source_path, &entry.target_path) {
+    let current_entries = match enumerate_tar_files(&entry.backup_path, &entry.original_path) {
         Ok(entries) => entries,
         Err(e) => {
             errors.push(ValidationError::warning(format!(
                 "Could not read directory {} for {} ({}): {}",
-                entry.target_path.display(),
+                entry.original_path.display(),
                 entry.name,
                 id,
                 e
@@ -204,7 +204,7 @@ fn check_plain_dir_entry(
             return;
         }
     };
-    let backup_entries = match enumerate_tar_files(&entry.source_path, backup_dir) {
+    let backup_entries = match enumerate_tar_files(&entry.backup_path, backup_dir) {
         Ok(entries) => entries,
         Err(e) => {
             errors.push(ValidationError::warning(format!(
@@ -318,21 +318,21 @@ fn check_bundle(
     };
 
     for (id, entry) in candidates {
-        if entry.target_path.is_dir() {
+        if entry.original_path.is_dir() {
             check_dir_entry(id, entry, &members, errors);
             continue;
         }
 
-        let current_content = match read_bytes(&entry.target_path, "current file", &entry.name, id)
-        {
-            Ok(c) => c,
-            Err(warning) => {
-                errors.push(warning);
-                continue;
-            }
-        };
+        let current_content =
+            match read_bytes(&entry.original_path, "current file", &entry.name, id) {
+                Ok(c) => c,
+                Err(warning) => {
+                    errors.push(warning);
+                    continue;
+                }
+            };
 
-        match members.get(&entry.source_path) {
+        match members.get(&entry.backup_path) {
             Some(backup_content) => {
                 if let Some(warning) = report_if_differs(
                     &current_content,
@@ -352,8 +352,8 @@ fn check_bundle(
     }
 }
 
-/// Compare every file under a directory entry's `target_path` against its
-/// matching `{source_path}/...` members in the decrypted bundle, and flag
+/// Compare every file under a directory entry's `original_path` against its
+/// matching `{backup_path}/...` members in the decrypted bundle, and flag
 /// any bundle members under that prefix missing on disk.
 fn check_dir_entry(
     id: &str,
@@ -361,12 +361,12 @@ fn check_dir_entry(
     members: &TarMemberMap,
     errors: &mut Vec<ValidationError>,
 ) {
-    let current_entries = match enumerate_tar_files(&entry.source_path, &entry.target_path) {
+    let current_entries = match enumerate_tar_files(&entry.backup_path, &entry.original_path) {
         Ok(entries) => entries,
         Err(e) => {
             errors.push(ValidationError::warning(format!(
                 "Could not read directory {} for {} ({}): {}",
-                entry.target_path.display(),
+                entry.original_path.display(),
                 entry.name,
                 id,
                 e
@@ -410,7 +410,7 @@ fn check_dir_entry(
         }
     }
 
-    let prefix = format!("{}/", entry.source_path);
+    let prefix = format!("{}/", entry.backup_path);
     for member_name in members.keys() {
         if member_name.starts_with(&prefix) && !seen.contains(member_name.as_str()) {
             errors.push(
@@ -442,15 +442,15 @@ mod tests {
         registry.save(&ctx.config_registry_path()).unwrap();
     }
 
-    fn write_config_entry(ctx: &Dfm, id: &str, source_path: &str, target_path: &Path) {
-        write_config_entry_with_enabled(ctx, id, source_path, target_path, true);
+    fn write_config_entry(ctx: &Dfm, id: &str, backup_path: &str, original_path: &Path) {
+        write_config_entry_with_enabled(ctx, id, backup_path, original_path, true);
     }
 
     fn write_config_entry_with_enabled(
         ctx: &Dfm,
         id: &str,
-        source_path: &str,
-        target_path: &Path,
+        backup_path: &str,
+        original_path: &Path,
         enabled: bool,
     ) {
         let mut entries = HashMap::new();
@@ -460,8 +460,8 @@ mod tests {
                 name: "Test Config".to_string(),
                 description: None,
                 enabled,
-                source_path: source_path.to_string(),
-                target_path: target_path.to_path_buf(),
+                backup_path: backup_path.to_string(),
+                original_path: original_path.to_path_buf(),
             },
         );
         let registry = ConfigRegistry {
@@ -485,15 +485,15 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path());
 
-        let target_path = dir.path().join("home/.bashrc");
-        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
-        fs::write(&target_path, b"export PATH=$PATH").unwrap();
+        let original_path = dir.path().join("home/.bashrc");
+        fs::create_dir_all(original_path.parent().unwrap()).unwrap();
+        fs::write(&original_path, b"export PATH=$PATH").unwrap();
 
         let backup_path = ctx.common_dir().join(".bashrc");
         fs::create_dir_all(backup_path.parent().unwrap()).unwrap();
         fs::write(&backup_path, b"export PATH=$PATH").unwrap();
 
-        write_config_entry(&ctx, "bashrc", ".bashrc", &target_path);
+        write_config_entry(&ctx, "bashrc", ".bashrc", &original_path);
 
         let validator =
             BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
@@ -507,15 +507,15 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path());
 
-        let target_path = dir.path().join("home/.bashrc");
-        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
-        fs::write(&target_path, b"current content").unwrap();
+        let original_path = dir.path().join("home/.bashrc");
+        fs::create_dir_all(original_path.parent().unwrap()).unwrap();
+        fs::write(&original_path, b"current content").unwrap();
 
         let backup_path = ctx.common_dir().join(".bashrc");
         fs::create_dir_all(backup_path.parent().unwrap()).unwrap();
         fs::write(&backup_path, b"stale backup content").unwrap();
 
-        write_config_entry(&ctx, "bashrc", ".bashrc", &target_path);
+        write_config_entry(&ctx, "bashrc", ".bashrc", &original_path);
 
         let validator =
             BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
@@ -530,17 +530,17 @@ mod tests {
     }
 
     #[test]
-    fn missing_target_path_is_skipped() {
+    fn missing_original_path_is_skipped() {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path());
 
-        let target_path = dir.path().join("home/.bashrc");
+        let original_path = dir.path().join("home/.bashrc");
 
         let backup_path = ctx.common_dir().join(".bashrc");
         fs::create_dir_all(backup_path.parent().unwrap()).unwrap();
         fs::write(&backup_path, b"backup content").unwrap();
 
-        write_config_entry(&ctx, "bashrc", ".bashrc", &target_path);
+        write_config_entry(&ctx, "bashrc", ".bashrc", &original_path);
 
         let validator =
             BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
@@ -554,15 +554,15 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path());
 
-        let target_path = dir.path().join("home/.bashrc");
-        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
-        fs::write(&target_path, b"current content").unwrap();
+        let original_path = dir.path().join("home/.bashrc");
+        fs::create_dir_all(original_path.parent().unwrap()).unwrap();
+        fs::write(&original_path, b"current content").unwrap();
 
         let backup_path = ctx.common_dir().join(".bashrc");
         fs::create_dir_all(backup_path.parent().unwrap()).unwrap();
         fs::write(&backup_path, b"stale backup content").unwrap();
 
-        write_config_entry_with_enabled(&ctx, "bashrc", ".bashrc", &target_path, false);
+        write_config_entry_with_enabled(&ctx, "bashrc", ".bashrc", &original_path, false);
 
         let validator =
             BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
@@ -576,15 +576,15 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path());
 
-        let target_path = dir.path().join("home/.bashrc");
-        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
-        fs::write(&target_path, b"current content").unwrap();
+        let original_path = dir.path().join("home/.bashrc");
+        fs::create_dir_all(original_path.parent().unwrap()).unwrap();
+        fs::write(&original_path, b"current content").unwrap();
 
         let backup_path = ctx.common_dir().join(".bashrc");
         fs::create_dir_all(backup_path.parent().unwrap()).unwrap();
         fs::write(&backup_path, b"stale backup content").unwrap();
 
-        write_config_entry_with_enabled(&ctx, "bashrc", ".bashrc", &target_path, false);
+        write_config_entry_with_enabled(&ctx, "bashrc", ".bashrc", &original_path, false);
 
         let validator =
             BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, true);
@@ -602,15 +602,15 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path());
 
-        let target_dir = dir.path().join("home/.config/nvim");
-        fs::create_dir_all(&target_dir).unwrap();
-        fs::write(target_dir.join("init.lua"), b"vim.opt.number = true").unwrap();
+        let original_dir = dir.path().join("home/.config/nvim");
+        fs::create_dir_all(&original_dir).unwrap();
+        fs::write(original_dir.join("init.lua"), b"vim.opt.number = true").unwrap();
 
         let backup_dir = ctx.common_dir().join("nvim");
         fs::create_dir_all(&backup_dir).unwrap();
         fs::write(backup_dir.join("init.lua"), b"vim.opt.number = true").unwrap();
 
-        write_config_entry(&ctx, "nvim", "nvim", &target_dir);
+        write_config_entry(&ctx, "nvim", "nvim", &original_dir);
 
         let validator =
             BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
@@ -624,15 +624,15 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path());
 
-        let target_dir = dir.path().join("home/.config/nvim");
-        fs::create_dir_all(&target_dir).unwrap();
-        fs::write(target_dir.join("init.lua"), b"current lua content").unwrap();
+        let original_dir = dir.path().join("home/.config/nvim");
+        fs::create_dir_all(&original_dir).unwrap();
+        fs::write(original_dir.join("init.lua"), b"current lua content").unwrap();
 
         let backup_dir = ctx.common_dir().join("nvim");
         fs::create_dir_all(&backup_dir).unwrap();
         fs::write(backup_dir.join("init.lua"), b"stale lua content").unwrap();
 
-        write_config_entry(&ctx, "nvim", "nvim", &target_dir);
+        write_config_entry(&ctx, "nvim", "nvim", &original_dir);
 
         let validator =
             BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
@@ -650,16 +650,16 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path());
 
-        let target_dir = dir.path().join("home/.config/nvim");
-        fs::create_dir_all(&target_dir).unwrap();
-        fs::write(target_dir.join("init.lua"), b"content").unwrap();
-        fs::write(target_dir.join("extra.lua"), b"only on disk").unwrap();
+        let original_dir = dir.path().join("home/.config/nvim");
+        fs::create_dir_all(&original_dir).unwrap();
+        fs::write(original_dir.join("init.lua"), b"content").unwrap();
+        fs::write(original_dir.join("extra.lua"), b"only on disk").unwrap();
 
         let backup_dir = ctx.common_dir().join("nvim");
         fs::create_dir_all(&backup_dir).unwrap();
         fs::write(backup_dir.join("init.lua"), b"content").unwrap();
 
-        write_config_entry(&ctx, "nvim", "nvim", &target_dir);
+        write_config_entry(&ctx, "nvim", "nvim", &original_dir);
 
         let validator =
             BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
@@ -677,16 +677,16 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path());
 
-        let target_dir = dir.path().join("home/.config/nvim");
-        fs::create_dir_all(&target_dir).unwrap();
-        fs::write(target_dir.join("init.lua"), b"content").unwrap();
+        let original_dir = dir.path().join("home/.config/nvim");
+        fs::create_dir_all(&original_dir).unwrap();
+        fs::write(original_dir.join("init.lua"), b"content").unwrap();
 
         let backup_dir = ctx.common_dir().join("nvim");
         fs::create_dir_all(&backup_dir).unwrap();
         fs::write(backup_dir.join("init.lua"), b"content").unwrap();
         fs::write(backup_dir.join("old.lua"), b"only in backup").unwrap();
 
-        write_config_entry(&ctx, "nvim", "nvim", &target_dir);
+        write_config_entry(&ctx, "nvim", "nvim", &original_dir);
 
         let validator =
             BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
@@ -705,9 +705,9 @@ mod tests {
         let ctx = Dfm::with_root(dir.path());
         empty_config_registry(&ctx);
 
-        let target_path = dir.path().join("home/.ssh/config");
-        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
-        fs::write(&target_path, b"ssh config content").unwrap();
+        let original_path = dir.path().join("home/.ssh/config");
+        fs::create_dir_all(original_path.parent().unwrap()).unwrap();
+        fs::write(&original_path, b"ssh config content").unwrap();
 
         let mut entries = HashMap::new();
         entries.insert(
@@ -716,8 +716,8 @@ mod tests {
                 name: "SSH Config".to_string(),
                 description: None,
                 enabled: true,
-                source_path: "ssh/config".to_string(),
-                target_path: target_path.clone(),
+                backup_path: "ssh/config".to_string(),
+                original_path: original_path.clone(),
             },
         );
         let encrypted_registry = EncryptedRegistry {
@@ -741,9 +741,9 @@ mod tests {
         let ctx = Dfm::with_root(dir.path());
         empty_config_registry(&ctx);
 
-        let target_path = dir.path().join("home/.ssh/config");
-        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
-        fs::write(&target_path, b"ssh config content").unwrap();
+        let original_path = dir.path().join("home/.ssh/config");
+        fs::create_dir_all(original_path.parent().unwrap()).unwrap();
+        fs::write(&original_path, b"ssh config content").unwrap();
 
         let mut entries = HashMap::new();
         entries.insert(
@@ -752,8 +752,8 @@ mod tests {
                 name: "SSH Config".to_string(),
                 description: None,
                 enabled: true,
-                source_path: "ssh/config".to_string(),
-                target_path: target_path.clone(),
+                backup_path: "ssh/config".to_string(),
+                original_path: original_path.clone(),
             },
         );
         let encrypted_registry = EncryptedRegistry {
@@ -765,7 +765,7 @@ mod tests {
             .unwrap();
 
         let tar_path = dir.path().join("bundle.tar");
-        write_tar_archive(&tar_path, &[("ssh/config", &target_path)]).unwrap();
+        write_tar_archive(&tar_path, &[("ssh/config", &original_path)]).unwrap();
 
         let bundle_path = ctx.encrypted_common_dir().join(ENCRYPTED_BUNDLE_FILE);
         let correct_password = SecretString::from("correct horse battery staple".to_string());
@@ -790,15 +790,15 @@ mod tests {
     fn write_encrypted_entry(
         ctx: &Dfm,
         id: &str,
-        source_path: &str,
-        target_path: &Path,
+        backup_path: &str,
+        original_path: &Path,
     ) -> EncryptedRegistryEntry {
         let entry = EncryptedRegistryEntry {
             name: "Test Encrypted".to_string(),
             description: None,
             enabled: true,
-            source_path: source_path.to_string(),
-            target_path: target_path.to_path_buf(),
+            backup_path: backup_path.to_string(),
+            original_path: original_path.to_path_buf(),
         };
         let mut entries = HashMap::new();
         entries.insert(id.to_string(), entry.clone());
@@ -810,7 +810,7 @@ mod tests {
         entry
     }
 
-    /// Build and encrypt a bundle from `(archive name, source file)` pairs
+    /// Build and encrypt a bundle from `(archive name, original file)` pairs
     /// via the same tar+encrypt helpers the real backup path uses.
     fn write_encrypted_bundle(
         ctx: &Dfm,
@@ -837,17 +837,17 @@ mod tests {
         empty_config_registry(&ctx);
         let profile = ActiveProfile::common_only();
 
-        let target_dir = dir.path().join("home/.ssh/keys");
-        fs::create_dir_all(&target_dir).unwrap();
-        fs::write(target_dir.join("id_rsa"), b"private key content").unwrap();
+        let original_dir = dir.path().join("home/.ssh/keys");
+        fs::create_dir_all(&original_dir).unwrap();
+        fs::write(original_dir.join("id_rsa"), b"private key content").unwrap();
 
-        write_encrypted_entry(&ctx, "ssh_keys", "ssh/keys", &target_dir);
+        write_encrypted_entry(&ctx, "ssh_keys", "ssh/keys", &original_dir);
 
         let password = SecretString::from("pw".to_string());
         write_encrypted_bundle(
             &ctx,
             &profile,
-            &[("ssh/keys/id_rsa", target_dir.join("id_rsa").as_path())],
+            &[("ssh/keys/id_rsa", original_dir.join("id_rsa").as_path())],
             &password,
         );
 
@@ -864,22 +864,22 @@ mod tests {
         empty_config_registry(&ctx);
         let profile = ActiveProfile::common_only();
 
-        let target_dir = dir.path().join("home/.ssh/keys");
-        fs::create_dir_all(&target_dir).unwrap();
-        fs::write(target_dir.join("id_rsa"), b"current key content").unwrap();
+        let original_dir = dir.path().join("home/.ssh/keys");
+        fs::create_dir_all(&original_dir).unwrap();
+        fs::write(original_dir.join("id_rsa"), b"current key content").unwrap();
 
-        write_encrypted_entry(&ctx, "ssh_keys", "ssh/keys", &target_dir);
+        write_encrypted_entry(&ctx, "ssh_keys", "ssh/keys", &original_dir);
 
-        // Build the bundle from a different source file so the archived
+        // Build the bundle from a different original file so the archived
         // content differs from what's currently on disk.
-        let stale_source = dir.path().join("stale_id_rsa");
-        fs::write(&stale_source, b"stale key content").unwrap();
+        let stale_original = dir.path().join("stale_id_rsa");
+        fs::write(&stale_original, b"stale key content").unwrap();
 
         let password = SecretString::from("pw".to_string());
         write_encrypted_bundle(
             &ctx,
             &profile,
-            &[("ssh/keys/id_rsa", stale_source.as_path())],
+            &[("ssh/keys/id_rsa", stale_original.as_path())],
             &password,
         );
 
@@ -900,18 +900,18 @@ mod tests {
         empty_config_registry(&ctx);
         let profile = ActiveProfile::common_only();
 
-        let target_dir = dir.path().join("home/.ssh/keys");
-        fs::create_dir_all(&target_dir).unwrap();
-        fs::write(target_dir.join("id_rsa"), b"key content").unwrap();
-        fs::write(target_dir.join("id_rsa.pub"), b"only on disk").unwrap();
+        let original_dir = dir.path().join("home/.ssh/keys");
+        fs::create_dir_all(&original_dir).unwrap();
+        fs::write(original_dir.join("id_rsa"), b"key content").unwrap();
+        fs::write(original_dir.join("id_rsa.pub"), b"only on disk").unwrap();
 
-        write_encrypted_entry(&ctx, "ssh_keys", "ssh/keys", &target_dir);
+        write_encrypted_entry(&ctx, "ssh_keys", "ssh/keys", &original_dir);
 
         let password = SecretString::from("pw".to_string());
         write_encrypted_bundle(
             &ctx,
             &profile,
-            &[("ssh/keys/id_rsa", target_dir.join("id_rsa").as_path())],
+            &[("ssh/keys/id_rsa", original_dir.join("id_rsa").as_path())],
             &password,
         );
 
@@ -932,11 +932,11 @@ mod tests {
         empty_config_registry(&ctx);
         let profile = ActiveProfile::common_only();
 
-        let target_dir = dir.path().join("home/.ssh/keys");
-        fs::create_dir_all(&target_dir).unwrap();
-        fs::write(target_dir.join("id_rsa"), b"key content").unwrap();
+        let original_dir = dir.path().join("home/.ssh/keys");
+        fs::create_dir_all(&original_dir).unwrap();
+        fs::write(original_dir.join("id_rsa"), b"key content").unwrap();
 
-        write_encrypted_entry(&ctx, "ssh_keys", "ssh/keys", &target_dir);
+        write_encrypted_entry(&ctx, "ssh_keys", "ssh/keys", &original_dir);
 
         // The bundle has an extra member under the same prefix that isn't
         // present on disk.
@@ -948,7 +948,7 @@ mod tests {
             &ctx,
             &profile,
             &[
-                ("ssh/keys/id_rsa", target_dir.join("id_rsa").as_path()),
+                ("ssh/keys/id_rsa", original_dir.join("id_rsa").as_path()),
                 ("ssh/keys/id_rsa.pub", extra_source.as_path()),
             ],
             &password,
@@ -971,11 +971,11 @@ mod tests {
         empty_config_registry(&ctx);
         let profile = ActiveProfile::common_only();
 
-        let target_path = dir.path().join("home/.ssh/config");
-        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
-        fs::write(&target_path, b"ssh config content").unwrap();
+        let original_path = dir.path().join("home/.ssh/config");
+        fs::create_dir_all(original_path.parent().unwrap()).unwrap();
+        fs::write(&original_path, b"ssh config content").unwrap();
 
-        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &target_path);
+        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &original_path);
 
         // Not valid age ciphertext at all, so decryption fails for a reason
         // other than an incorrect password.
@@ -1002,11 +1002,11 @@ mod tests {
         empty_config_registry(&ctx);
         let profile = ActiveProfile::common_only();
 
-        let target_path = dir.path().join("home/.ssh/config");
-        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
-        fs::write(&target_path, b"ssh config content").unwrap();
+        let original_path = dir.path().join("home/.ssh/config");
+        fs::create_dir_all(original_path.parent().unwrap()).unwrap();
+        fs::write(&original_path, b"ssh config content").unwrap();
 
-        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &target_path);
+        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &original_path);
 
         // The bundle decrypts fine, but the decrypted payload isn't a valid
         // tar archive.
@@ -1086,10 +1086,10 @@ mod tests {
         let ctx = Dfm::with_root(dir.path());
         empty_config_registry(&ctx);
 
-        // An enabled encrypted entry whose target doesn't exist on disk is
+        // An enabled encrypted entry whose original doesn't exist on disk is
         // filtered out, leaving no candidates to validate.
-        let target_path = dir.path().join("home/.ssh/config");
-        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &target_path);
+        let original_path = dir.path().join("home/.ssh/config");
+        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &original_path);
 
         let password = SecretString::from("pw".to_string());
         let validator = BackupConsistencyValidator::new(
@@ -1108,14 +1108,14 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path());
 
-        // target_path exists, but the resolved backup source under
+        // original_path exists, but the resolved backup path under
         // common/profile layers does not, so this entry should be skipped
         // rather than reported.
-        let target_path = dir.path().join("home/.bashrc");
-        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
-        fs::write(&target_path, b"current content").unwrap();
+        let original_path = dir.path().join("home/.bashrc");
+        fs::create_dir_all(original_path.parent().unwrap()).unwrap();
+        fs::write(&original_path, b"current content").unwrap();
 
-        write_config_entry(&ctx, "bashrc", ".bashrc", &target_path);
+        write_config_entry(&ctx, "bashrc", ".bashrc", &original_path);
 
         let validator =
             BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
@@ -1130,10 +1130,10 @@ mod tests {
         let ctx = Dfm::with_root(dir.path());
         empty_config_registry(&ctx);
 
-        let target_path = dir.path().join("home/.ssh/config");
-        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
-        fs::write(&target_path, b"ssh config content").unwrap();
-        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &target_path);
+        let original_path = dir.path().join("home/.ssh/config");
+        fs::create_dir_all(original_path.parent().unwrap()).unwrap();
+        fs::write(&original_path, b"ssh config content").unwrap();
+        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &original_path);
 
         // No bundle file is ever written, so resolve_encrypted_bundle finds
         // nothing even though there's a candidate to validate.
@@ -1160,16 +1160,16 @@ mod tests {
         empty_config_registry(&ctx);
         let profile = ActiveProfile::common_only();
 
-        let target_path = dir.path().join("home/.ssh/config");
-        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
-        fs::write(&target_path, b"ssh config content").unwrap();
-        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &target_path);
+        let original_path = dir.path().join("home/.ssh/config");
+        fs::create_dir_all(original_path.parent().unwrap()).unwrap();
+        fs::write(&original_path, b"ssh config content").unwrap();
+        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &original_path);
 
         let password = SecretString::from("pw".to_string());
         write_encrypted_bundle(
             &ctx,
             &profile,
-            &[("ssh/config", target_path.as_path())],
+            &[("ssh/config", original_path.as_path())],
             &password,
         );
 
@@ -1186,19 +1186,19 @@ mod tests {
         empty_config_registry(&ctx);
         let profile = ActiveProfile::common_only();
 
-        let target_path = dir.path().join("home/.ssh/config");
-        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
-        fs::write(&target_path, b"current ssh config").unwrap();
-        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &target_path);
+        let original_path = dir.path().join("home/.ssh/config");
+        fs::create_dir_all(original_path.parent().unwrap()).unwrap();
+        fs::write(&original_path, b"current ssh config").unwrap();
+        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &original_path);
 
-        let stale_source = dir.path().join("stale_config");
-        fs::write(&stale_source, b"stale ssh config").unwrap();
+        let stale_original = dir.path().join("stale_config");
+        fs::write(&stale_original, b"stale ssh config").unwrap();
 
         let password = SecretString::from("pw".to_string());
         write_encrypted_bundle(
             &ctx,
             &profile,
-            &[("ssh/config", stale_source.as_path())],
+            &[("ssh/config", stale_original.as_path())],
             &password,
         );
 
@@ -1219,21 +1219,21 @@ mod tests {
         empty_config_registry(&ctx);
         let profile = ActiveProfile::common_only();
 
-        let target_path = dir.path().join("home/.ssh/config");
-        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
-        fs::write(&target_path, b"ssh config content").unwrap();
-        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &target_path);
+        let original_path = dir.path().join("home/.ssh/config");
+        fs::create_dir_all(original_path.parent().unwrap()).unwrap();
+        fs::write(&original_path, b"ssh config content").unwrap();
+        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &original_path);
 
-        // Bundle exists, but has no member matching this entry's source
+        // Bundle exists, but has no member matching this entry's backup
         // path at all.
-        let other_source = dir.path().join("other_secret");
-        fs::write(&other_source, b"unrelated content").unwrap();
+        let other_original = dir.path().join("other_secret");
+        fs::write(&other_original, b"unrelated content").unwrap();
 
         let password = SecretString::from("pw".to_string());
         write_encrypted_bundle(
             &ctx,
             &profile,
-            &[("other/secret", other_source.as_path())],
+            &[("other/secret", other_original.as_path())],
             &password,
         );
 

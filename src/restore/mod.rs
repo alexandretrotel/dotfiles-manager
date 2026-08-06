@@ -44,12 +44,12 @@ pub fn run(
     let mut configs = SectionReport::default();
 
     for (id, entry) in config_registry.get_enabled_entries() {
-        let outcome = match profile.resolve_source(ctx, &entry.source_path) {
-            Some(resolved) => match config::restore_config(&resolved.path, &entry.target_path) {
-                Ok(()) => RegistryEntryOutcome::done(id, &entry.source_path),
-                Err(reason) => RegistryEntryOutcome::skipped(id, &entry.source_path, reason),
+        let outcome = match profile.resolve_backup_path(ctx, &entry.backup_path) {
+            Some(resolved) => match config::restore_config(&resolved.path, &entry.original_path) {
+                Ok(()) => RegistryEntryOutcome::done(id, &entry.backup_path),
+                Err(reason) => RegistryEntryOutcome::skipped(id, &entry.backup_path, reason),
             },
-            None => RegistryEntryOutcome::skipped(id, &entry.source_path, "no backup in any layer"),
+            None => RegistryEntryOutcome::skipped(id, &entry.backup_path, "no backup in any layer"),
         };
         configs.outcomes.push(outcome);
     }
@@ -131,7 +131,7 @@ mod tests {
         fs::create_dir_all(backup_file.parent().unwrap()).unwrap();
         fs::write(&backup_file, b"backed up content").unwrap();
 
-        let target = dir.path().join("restored/myfile.txt");
+        let original = dir.path().join("restored/myfile.txt");
 
         let mut entries = HashMap::new();
         entries.insert(
@@ -140,8 +140,8 @@ mod tests {
                 name: "My File".to_string(),
                 description: None,
                 enabled: true,
-                source_path: "myfile.txt".to_string(),
-                target_path: target.clone(),
+                backup_path: "myfile.txt".to_string(),
+                original_path: original.clone(),
             },
         );
         let registry = ConfigRegistry {
@@ -154,7 +154,7 @@ mod tests {
 
         assert_eq!(report.restored(), 1);
         assert!(report.encrypted.is_none());
-        assert_eq!(fs::read(&target).unwrap(), b"backed up content");
+        assert_eq!(fs::read(&original).unwrap(), b"backed up content");
     }
 
     #[test]
@@ -170,8 +170,8 @@ mod tests {
                 name: "Ghost".to_string(),
                 description: None,
                 enabled: true,
-                source_path: "ghost.txt".to_string(),
-                target_path: dir.path().join("ghost-target.txt"),
+                backup_path: "ghost.txt".to_string(),
+                original_path: dir.path().join("ghost-original.txt"),
             },
         );
         let registry = ConfigRegistry {
@@ -184,6 +184,6 @@ mod tests {
 
         assert_eq!(report.restored(), 0);
         assert_eq!(report.skipped(), 1);
-        assert!(!dir.path().join("ghost-target.txt").exists());
+        assert!(!dir.path().join("ghost-original.txt").exists());
     }
 }

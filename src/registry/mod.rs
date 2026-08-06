@@ -104,8 +104,8 @@ mod tests {
             name: name.to_string(),
             description: None,
             enabled,
-            source_path: format!(".{name}"),
-            target_path: std::path::PathBuf::from(format!("/home/user/.{name}")),
+            backup_path: format!(".{name}"),
+            original_path: std::path::PathBuf::from(format!("/home/user/.{name}")),
         }
     }
 

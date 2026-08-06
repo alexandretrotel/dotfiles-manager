@@ -14,7 +14,7 @@ pub enum RegistryEntryStatus {
 pub struct RegistryEntryOutcome {
     /// Registry entry id.
     pub id: String,
-    /// Human-oriented label (usually the source path).
+    /// Human-oriented label (usually the backup path).
     pub label: String,
     pub status: RegistryEntryStatus,
 }

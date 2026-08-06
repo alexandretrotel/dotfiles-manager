@@ -157,7 +157,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path());
 
-        let unsorted = r#"{"version":"1.0.0","entries":{"zshrc":{"name":"Zsh","description":null,"enabled":true,"source_path":".zshrc","target_path":"/home/user/.zshrc"},"bashrc":{"name":"Bash","description":null,"enabled":true,"source_path":".bashrc","target_path":"/home/user/.bashrc"}}}"#;
+        let unsorted = r#"{"version":"1.0.0","entries":{"zshrc":{"name":"Zsh","description":null,"enabled":true,"backup_path":".zshrc","original_path":"/home/user/.zshrc"},"bashrc":{"name":"Bash","description":null,"enabled":true,"backup_path":".bashrc","original_path":"/home/user/.bashrc"}}}"#;
         std::fs::write(ctx.config_registry_path(), unsorted).unwrap();
 
         let results = fix(&ctx);
