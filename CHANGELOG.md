@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## Unreleased
+
+### Changed
+- **Breaking:** The crate, binaries, and repository have been renamed from `dotfm` to `dotfiles-manager`. Install with `cargo install dotfiles-manager`; the CLI ships two binaries, `dotfiles-manager` and the shorter alias `dfm`.
+- **Breaking:** The data directory moved from `~/.dotfm` to `~/.dfm`. Existing users must move it manually: `mv ~/.dotfm ~/.dfm`.
+- **Breaking:** The encrypted bundle filename changed from `dotfm-encrypted-bundle.age` to `dfm-encrypted-bundle.age`. Rename the file inside your backup directory before running `dfm restore`.
+- **Breaking:** The system keychain service name changed from `dotfm` to `dotfiles-manager`. Re-save your encryption password with `dfm secret set`.
+- **Breaking:** The profile override environment variable was renamed from `DOTFM_PROFILE` to `DFM_PROFILE`.
+
 ## v1.0.0
 
 > **Note:** Versioning restarts at 1.0.0 following the rename from `mntn` to `dotfm`. This is not a downgrade — it is a fresh start for the `dotfm` crate name. The previous `mntn` history (up through v5.0.0) is preserved below for reference.

@@ -11,7 +11,7 @@ use dotfiles_manager::Dfm;
 use crate::cli::{Cli, Command};
 
 /// Parse CLI args and dispatch to the matching command handler.
-fn main() -> Result<()> {
+pub fn main() -> Result<()> {
     color_eyre::install()?;
 
     let cli = Cli::parse();

@@ -24,7 +24,7 @@ required-features = ["cli"]
 
 [[bin]]
 name = "dfm"
-path = "src/bin/dotfiles-manager/main.rs"
+path = "src/bin/dfm/main.rs"
 required-features = ["cli"]
 
 [dependencies]
