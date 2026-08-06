@@ -4,10 +4,15 @@ use std::path::{Path, PathBuf};
 use age::secrecy::SecretString;
 
 use crate::context::{Dotfm, ENCRYPTED_BUNDLE_FILE};
-use crate::encryption::{create_temp_file, encrypt_file, write_entries_tar};
+use crate::encryption::{
+    collect_dir_tar_entries, create_temp_file, encrypt_file, write_entries_tar,
+};
 use crate::error::{Result, WrapErr};
 use crate::registry::EncryptedRegistry;
 use crate::report::{ItemOutcome, SectionReport};
+
+/// One registry entry's queued tar members: `(id, label, [(archive name, source file)])`.
+type ArchiveEntry = (String, String, Vec<(String, PathBuf)>);
 
 /// Tar every enabled encrypted registry entry that exists on disk and
 /// encrypt it into a single bundle at `encrypted_backup_path`. Removes any
@@ -24,7 +29,7 @@ pub(super) fn backup_encrypted_configs(
     let enabled_entries: Vec<_> = encrypted_registry.get_enabled_entries().collect();
 
     let mut report = SectionReport::default();
-    let mut to_archive: Vec<(String, String, PathBuf)> = Vec::new();
+    let mut to_archive: Vec<ArchiveEntry> = Vec::new();
 
     for (id, entry) in enabled_entries {
         if !entry.target_path.exists() {
@@ -36,23 +41,23 @@ pub(super) fn backup_encrypted_configs(
             continue;
         }
 
-        if entry.target_path.is_dir() {
-            report.outcomes.push(ItemOutcome::skipped(
-                id,
-                &entry.source_path,
-                format!(
-                    "directories are not supported: {}",
-                    entry.target_path.display()
-                ),
-            ));
-            continue;
-        }
+        let members = if entry.target_path.is_dir() {
+            match collect_dir_tar_entries(&entry.source_path, &entry.target_path) {
+                Ok(members) => members,
+                Err(e) => {
+                    report.outcomes.push(ItemOutcome::skipped(
+                        id,
+                        &entry.source_path,
+                        format!("could not read directory: {e}"),
+                    ));
+                    continue;
+                }
+            }
+        } else {
+            vec![(entry.source_path.clone(), entry.target_path.clone())]
+        };
 
-        to_archive.push((
-            id.clone(),
-            entry.source_path.clone(),
-            entry.target_path.clone(),
-        ));
+        to_archive.push((id.clone(), entry.source_path.clone(), members));
     }
 
     to_archive.sort_by(|a, b| a.1.cmp(&b.1));
@@ -66,7 +71,8 @@ pub(super) fn backup_encrypted_configs(
 
     let tar_refs: Vec<(&str, &Path)> = to_archive
         .iter()
-        .map(|(_, source, target)| (source.as_str(), target.as_path()))
+        .flat_map(|(_, _, members)| members.iter())
+        .map(|(name, path)| (name.as_str(), path.as_path()))
         .collect();
 
     let tar_temp = create_temp_file("enc-bundle-tar").wrap_err("Create temporary tar path")?;

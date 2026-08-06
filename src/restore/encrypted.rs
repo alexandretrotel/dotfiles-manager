@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
+use std::path::Path;
 
 use age::secrecy::SecretString;
 
@@ -79,7 +80,9 @@ pub(super) fn restore_encrypted_configs(
 }
 
 /// Write each enabled entry's contents from the decrypted bundle's member
-/// map to its target path.
+/// map to its target path. A `source_path` matching a member exactly is
+/// restored as a single file; one only matching as a `source_path/`
+/// prefix is restored as a directory tree.
 fn restore_from_bundle_members(
     enabled_entries: &[(String, EncryptedRegistryEntry)],
     members: &HashMap<String, Vec<u8>>,
@@ -88,36 +91,86 @@ fn restore_from_bundle_members(
     for (id, entry) in enabled_entries {
         let target_path = &entry.target_path;
 
-        let outcome = match members.get(&entry.source_path) {
-            Some(contents) => (|| {
-                if let Some(parent) = target_path.parent() {
-                    fs::create_dir_all(parent).map_err(|e| {
-                        format!("failed to create directory {}: {}", parent.display(), e)
-                    })?;
-                }
-
-                fs::write(target_path, contents)
-                    .map_err(|e| format!("failed to write {}: {}", target_path.display(), e))?;
-
-                match set_private_file_permissions(target_path) {
-                    Ok(()) => Ok(None),
-                    Err(e) => Ok(Some(format!(
-                        "restored, but failed to set permissions on {}: {}",
-                        target_path.display(),
-                        e
-                    ))),
-                }
-            })()
-            .map_or_else(
-                |reason: String| ItemOutcome::skipped(id, &entry.source_path, reason),
-                |note: Option<String>| match note {
-                    Some(note) => ItemOutcome::done_with_note(id, &entry.source_path, note),
-                    None => ItemOutcome::done(id, &entry.source_path),
-                },
-            ),
-            None => ItemOutcome::skipped(id, &entry.source_path, "not in encrypted bundle"),
+        let result = if members.contains_key(&entry.source_path) {
+            restore_file(target_path, &members[&entry.source_path])
+        } else {
+            restore_dir(target_path, &entry.source_path, members)
         };
+
+        let outcome = result.map_or_else(
+            |reason| ItemOutcome::skipped(id, &entry.source_path, reason),
+            |note| match note {
+                Some(note) => ItemOutcome::done_with_note(id, &entry.source_path, note),
+                None => ItemOutcome::done(id, &entry.source_path),
+            },
+        );
 
         report.outcomes.push(outcome);
     }
+}
+
+/// Write a single file entry's contents to `target_path`.
+fn restore_file(target_path: &Path, contents: &[u8]) -> Result<Option<String>, String> {
+    if let Some(parent) = target_path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("failed to create directory {}: {}", parent.display(), e))?;
+    }
+
+    fs::write(target_path, contents)
+        .map_err(|e| format!("failed to write {}: {}", target_path.display(), e))?;
+
+    match set_private_file_permissions(target_path) {
+        Ok(()) => Ok(None),
+        Err(e) => Ok(Some(format!(
+            "restored, but failed to set permissions on {}: {}",
+            target_path.display(),
+            e
+        ))),
+    }
+}
+
+/// Write every bundle member prefixed `{source_prefix}/` into `target_path`,
+/// recreating the relative directory structure.
+fn restore_dir(
+    target_path: &Path,
+    source_prefix: &str,
+    members: &HashMap<String, Vec<u8>>,
+) -> Result<Option<String>, String> {
+    let prefix = format!("{source_prefix}/");
+    let mut written = 0usize;
+    let mut warnings = Vec::new();
+
+    for (member_path, contents) in members {
+        let Some(relative) = member_path.strip_prefix(&prefix) else {
+            continue;
+        };
+        let dest = target_path.join(relative);
+
+        if let Err(e) = fs::create_dir_all(dest.parent().unwrap_or(target_path)) {
+            warnings.push(format!(
+                "failed to create directory for {}: {}",
+                dest.display(),
+                e
+            ));
+            continue;
+        }
+        if let Err(e) = fs::write(&dest, contents) {
+            warnings.push(format!("failed to write {}: {}", dest.display(), e));
+            continue;
+        }
+        if let Err(e) = set_private_file_permissions(&dest) {
+            warnings.push(format!(
+                "failed to set permissions on {}: {}",
+                dest.display(),
+                e
+            ));
+        }
+        written += 1;
+    }
+
+    if written == 0 && warnings.is_empty() {
+        return Err("not in encrypted bundle".to_string());
+    }
+
+    Ok((!warnings.is_empty()).then(|| warnings.join("; ")))
 }

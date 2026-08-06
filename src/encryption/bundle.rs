@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fs;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use tempfile::NamedTempFile;
 
@@ -37,6 +37,39 @@ pub fn write_entries_tar(tar_path: &Path, entries: &[(&str, &Path)]) -> Result<(
             .wrap_err_with(|| format!("Append {} to tar", source_path))?;
     }
     builder.finish().wrap_err("Finish tar archive")?;
+    Ok(())
+}
+
+/// Recursively list every regular file under `dir`, paired with the tar
+/// member name it should be archived under (`{source_prefix}/relative/path`,
+/// forward slashes regardless of platform). Symlinks are skipped.
+pub fn collect_dir_tar_entries(source_prefix: &str, dir: &Path) -> Result<Vec<(String, PathBuf)>> {
+    let mut entries = Vec::new();
+    collect_dir_tar_entries_into(source_prefix, dir, &mut entries)
+        .wrap_err_with(|| format!("Walk directory {}", dir.display()))?;
+    entries.sort_by(|a, b| a.0.cmp(&b.0));
+    Ok(entries)
+}
+
+fn collect_dir_tar_entries_into(
+    prefix: &str,
+    dir: &Path,
+    entries: &mut Vec<(String, PathBuf)>,
+) -> std::io::Result<()> {
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        let member = format!("{prefix}/{}", entry.file_name().to_string_lossy());
+
+        let metadata = fs::symlink_metadata(&path)?;
+        if metadata.file_type().is_symlink() {
+            continue;
+        } else if metadata.is_dir() {
+            collect_dir_tar_entries_into(&member, &path, entries)?;
+        } else if metadata.is_file() {
+            entries.push((member, path));
+        }
+    }
     Ok(())
 }
 
