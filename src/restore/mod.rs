@@ -18,18 +18,6 @@ pub struct RestoreReport {
     pub encrypted: Option<SectionReport>,
 }
 
-impl RestoreReport {
-    /// Total number of configs (plain and encrypted) restored.
-    pub fn restored(&self) -> usize {
-        self.configs.succeeded() + self.encrypted.as_ref().map_or(0, |s| s.succeeded())
-    }
-
-    /// Total number of configs (plain and encrypted) skipped.
-    pub fn skipped(&self) -> usize {
-        self.configs.skipped() + self.encrypted.as_ref().map_or(0, |s| s.skipped())
-    }
-}
-
 /// Restore configs and (when `password` is given) encrypted configs for
 /// `profile`.
 pub fn run(
@@ -68,58 +56,8 @@ pub fn run(
 mod tests {
     use super::*;
     use crate::registry::ConfigRegistryEntry;
-    use crate::report::RegistryEntryStatus;
     use std::collections::HashMap;
     use std::fs;
-
-    fn section_with(outcomes: Vec<RegistryEntryOutcome>) -> SectionReport {
-        SectionReport {
-            outcomes,
-            warnings: Vec::new(),
-        }
-    }
-
-    fn done(id: &str) -> RegistryEntryOutcome {
-        RegistryEntryOutcome {
-            id: id.to_string(),
-            label: id.to_string(),
-            status: RegistryEntryStatus::Done { note: None },
-        }
-    }
-
-    fn skipped(id: &str) -> RegistryEntryOutcome {
-        RegistryEntryOutcome {
-            id: id.to_string(),
-            label: id.to_string(),
-            status: RegistryEntryStatus::Skipped {
-                reason: "test".to_string(),
-            },
-        }
-    }
-
-    #[test]
-    fn restored_and_skipped_count_plain_configs_only_when_encrypted_is_none() {
-        let report = RestoreReport {
-            profile: ActiveProfile::common_only(),
-            configs: section_with(vec![done("a"), done("b"), skipped("c")]),
-            encrypted: None,
-        };
-
-        assert_eq!(report.restored(), 2);
-        assert_eq!(report.skipped(), 1);
-    }
-
-    #[test]
-    fn restored_and_skipped_sum_plain_and_encrypted_sections() {
-        let report = RestoreReport {
-            profile: ActiveProfile::common_only(),
-            configs: section_with(vec![done("a"), skipped("b")]),
-            encrypted: Some(section_with(vec![done("c"), done("d"), skipped("e")])),
-        };
-
-        assert_eq!(report.restored(), 3);
-        assert_eq!(report.skipped(), 2);
-    }
 
     #[test]
     fn restore_run_restores_a_config_from_the_common_layer() {
@@ -152,7 +90,7 @@ mod tests {
 
         let report = run(&ctx, &profile, None).unwrap();
 
-        assert_eq!(report.restored(), 1);
+        assert_eq!(report.configs.succeeded(), 1);
         assert!(report.encrypted.is_none());
         assert_eq!(fs::read(&original).unwrap(), b"backed up content");
     }
@@ -182,8 +120,8 @@ mod tests {
 
         let report = run(&ctx, &profile, None).unwrap();
 
-        assert_eq!(report.restored(), 0);
-        assert_eq!(report.skipped(), 1);
+        assert_eq!(report.configs.succeeded(), 0);
+        assert_eq!(report.configs.skipped(), 1);
         assert!(!dir.path().join("ghost-original.txt").exists());
     }
 }

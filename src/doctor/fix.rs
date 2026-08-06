@@ -21,11 +21,6 @@ pub struct FixedFile {
 }
 
 impl FixedFile {
-    /// Whether the file was actually rewritten.
-    pub fn was_rewritten(&self) -> bool {
-        matches!(self.outcome, Ok(true))
-    }
-
     /// Whether rewriting failed.
     pub fn failed(&self) -> bool {
         self.outcome.is_err()
@@ -105,36 +100,26 @@ mod tests {
     use crate::context::Dfm;
 
     #[test]
-    fn was_rewritten_true_only_for_ok_true() {
-        let f = FixedFile {
+    fn failed_is_true_only_for_err_outcome() {
+        let ok_true = FixedFile {
             label: "x",
             path: PathBuf::from("/tmp/x"),
             outcome: Ok(true),
         };
-        assert!(f.was_rewritten());
-        assert!(!f.failed());
-    }
-
-    #[test]
-    fn was_rewritten_false_for_ok_false() {
-        let f = FixedFile {
+        let ok_false = FixedFile {
             label: "x",
             path: PathBuf::from("/tmp/x"),
             outcome: Ok(false),
         };
-        assert!(!f.was_rewritten());
-        assert!(!f.failed());
-    }
-
-    #[test]
-    fn failed_true_for_err_outcome() {
-        let f = FixedFile {
+        let err = FixedFile {
             label: "x",
             path: PathBuf::from("/tmp/x"),
             outcome: Err("broken".to_string()),
         };
-        assert!(!f.was_rewritten());
-        assert!(f.failed());
+
+        assert!(!ok_true.failed());
+        assert!(!ok_false.failed());
+        assert!(err.failed());
     }
 
     #[test]
@@ -147,7 +132,6 @@ mod tests {
         assert_eq!(results.len(), 4);
         for f in &results {
             assert_eq!(f.outcome, Ok(false));
-            assert!(!f.was_rewritten());
             assert!(!f.failed());
         }
     }
@@ -167,7 +151,6 @@ mod tests {
             .unwrap();
 
         assert_eq!(config_result.outcome, Ok(true));
-        assert!(config_result.was_rewritten());
 
         let content = std::fs::read_to_string(ctx.config_registry_path()).unwrap();
         assert!(content.contains('\n'));

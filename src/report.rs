@@ -60,7 +60,7 @@ impl RegistryEntryOutcome {
     }
 
     /// Whether this entry completed successfully (regardless of any note).
-    pub fn is_done(&self) -> bool {
+    pub(crate) fn is_done(&self) -> bool {
         matches!(self.status, RegistryEntryStatus::Done { .. })
     }
 }
