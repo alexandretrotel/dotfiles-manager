@@ -41,5 +41,5 @@ jobs:
         with:
           bin: dotfiles-manager,dfm
           target: ${{ matrix.target }}
-          archive: $bin-$target
+          archive: dotfiles-manager-$target
           token: ${{ secrets.GITHUB_TOKEN }}
