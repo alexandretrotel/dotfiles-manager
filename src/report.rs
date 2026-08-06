@@ -1,35 +1,35 @@
-/// Outcome of processing a single item during backup or restore.
+/// Outcome of processing a single registry entry during backup or restore.
 #[derive(Debug, Clone)]
-pub enum ItemStatus {
-    /// Item was processed; `note` carries any extra information (e.g. a
+pub enum RegistryEntryStatus {
+    /// Entry was processed; `note` carries any extra information (e.g. a
     /// symlink that was converted to a real file along the way).
     Done { note: Option<String> },
-    /// Item was skipped; `reason` explains why.
+    /// Entry was skipped; `reason` explains why.
     Skipped { reason: String },
 }
 
 /// Result for one registry entry processed during a backup or restore run,
-/// pairing the entry's identity with its [`ItemStatus`].
+/// pairing the entry's identity with its [`RegistryEntryStatus`].
 #[derive(Debug, Clone)]
-pub struct ItemOutcome {
+pub struct RegistryEntryOutcome {
     /// Registry entry id.
     pub id: String,
     /// Human-oriented label (usually the source path).
     pub label: String,
-    pub status: ItemStatus,
+    pub status: RegistryEntryStatus,
 }
 
-impl ItemOutcome {
-    /// Build a [`ItemStatus::Done`] outcome with no note.
+impl RegistryEntryOutcome {
+    /// Build a [`RegistryEntryStatus::Done`] outcome with no note.
     pub(crate) fn done(id: impl Into<String>, label: impl Into<String>) -> Self {
         Self {
             id: id.into(),
             label: label.into(),
-            status: ItemStatus::Done { note: None },
+            status: RegistryEntryStatus::Done { note: None },
         }
     }
 
-    /// Build a [`ItemStatus::Done`] outcome carrying an informational note.
+    /// Build a [`RegistryEntryStatus::Done`] outcome carrying an informational note.
     pub(crate) fn done_with_note(
         id: impl Into<String>,
         label: impl Into<String>,
@@ -38,13 +38,13 @@ impl ItemOutcome {
         Self {
             id: id.into(),
             label: label.into(),
-            status: ItemStatus::Done {
+            status: RegistryEntryStatus::Done {
                 note: Some(note.into()),
             },
         }
     }
 
-    /// Build a [`ItemStatus::Skipped`] outcome with the given reason.
+    /// Build a [`RegistryEntryStatus::Skipped`] outcome with the given reason.
     pub(crate) fn skipped(
         id: impl Into<String>,
         label: impl Into<String>,
@@ -53,34 +53,34 @@ impl ItemOutcome {
         Self {
             id: id.into(),
             label: label.into(),
-            status: ItemStatus::Skipped {
+            status: RegistryEntryStatus::Skipped {
                 reason: reason.into(),
             },
         }
     }
 
-    /// Whether this item completed successfully (regardless of any note).
+    /// Whether this entry completed successfully (regardless of any note).
     pub fn is_done(&self) -> bool {
-        matches!(self.status, ItemStatus::Done { .. })
+        matches!(self.status, RegistryEntryStatus::Done { .. })
     }
 }
 
 /// Per-section results of a backup or restore run.
 #[derive(Debug, Clone, Default)]
 pub struct SectionReport {
-    pub outcomes: Vec<ItemOutcome>,
+    pub outcomes: Vec<RegistryEntryOutcome>,
     /// Non-fatal warnings that apply to the section as a whole (e.g. an
     /// encrypted bundle that could not be decrypted).
     pub warnings: Vec<String>,
 }
 
 impl SectionReport {
-    /// Number of items that completed successfully.
+    /// Number of entries that completed successfully.
     pub fn succeeded(&self) -> usize {
         self.outcomes.iter().filter(|o| o.is_done()).count()
     }
 
-    /// Number of items that were skipped.
+    /// Number of entries that were skipped.
     pub fn skipped(&self) -> usize {
         self.outcomes.len() - self.succeeded()
     }
@@ -97,29 +97,29 @@ mod tests {
 
     #[test]
     fn done_outcome_has_no_note_and_is_done() {
-        let outcome = ItemOutcome::done("id-1", "~/.zshrc");
+        let outcome = RegistryEntryOutcome::done("id-1", "~/.zshrc");
         assert_eq!(outcome.id, "id-1");
         assert_eq!(outcome.label, "~/.zshrc");
         assert!(outcome.is_done());
-        assert!(matches!(outcome.status, ItemStatus::Done { note: None }));
+        assert!(matches!(outcome.status, RegistryEntryStatus::Done { note: None }));
     }
 
     #[test]
     fn done_with_note_outcome_carries_the_note() {
-        let outcome = ItemOutcome::done_with_note("id-1", "~/.zshrc", "converted symlink");
+        let outcome = RegistryEntryOutcome::done_with_note("id-1", "~/.zshrc", "converted symlink");
         assert!(outcome.is_done());
         match outcome.status {
-            ItemStatus::Done { note: Some(note) } => assert_eq!(note, "converted symlink"),
+            RegistryEntryStatus::Done { note: Some(note) } => assert_eq!(note, "converted symlink"),
             other => panic!("expected Done with note, got {other:?}"),
         }
     }
 
     #[test]
     fn skipped_outcome_is_not_done_and_carries_reason() {
-        let outcome = ItemOutcome::skipped("id-2", "~/.vimrc", "already up to date");
+        let outcome = RegistryEntryOutcome::skipped("id-2", "~/.vimrc", "already up to date");
         assert!(!outcome.is_done());
         match outcome.status {
-            ItemStatus::Skipped { reason } => assert_eq!(reason, "already up to date"),
+            RegistryEntryStatus::Skipped { reason } => assert_eq!(reason, "already up to date"),
             other => panic!("expected Skipped, got {other:?}"),
         }
     }
@@ -132,7 +132,7 @@ mod tests {
     #[test]
     fn section_report_with_outcomes_is_not_empty() {
         let mut report = SectionReport::default();
-        report.outcomes.push(ItemOutcome::done("id-1", "a"));
+        report.outcomes.push(RegistryEntryOutcome::done("id-1", "a"));
         assert!(!report.is_empty());
     }
 
@@ -146,13 +146,13 @@ mod tests {
     #[test]
     fn succeeded_and_skipped_counts_reflect_outcome_mix() {
         let mut report = SectionReport::default();
-        report.outcomes.push(ItemOutcome::done("id-1", "a"));
+        report.outcomes.push(RegistryEntryOutcome::done("id-1", "a"));
         report
             .outcomes
-            .push(ItemOutcome::done_with_note("id-2", "b", "note"));
+            .push(RegistryEntryOutcome::done_with_note("id-2", "b", "note"));
         report
             .outcomes
-            .push(ItemOutcome::skipped("id-3", "c", "reason"));
+            .push(RegistryEntryOutcome::skipped("id-3", "c", "reason"));
 
         assert_eq!(report.succeeded(), 2);
         assert_eq!(report.skipped(), 1);

@@ -6,7 +6,7 @@ use std::thread;
 use crate::context::Dfm;
 use crate::error::{Result, WrapErr};
 use crate::registry::{PackageRegistry, PackageRegistryEntry};
-use crate::report::{ItemOutcome, SectionReport};
+use crate::report::{RegistryEntryOutcome, SectionReport};
 use crate::utils::ansi::strip_ansi_codes;
 use crate::utils::process::run_cmd;
 
@@ -39,8 +39,8 @@ pub(super) fn backup_packages(ctx: &Dfm, packages_path: &Path) -> Result<Section
     let mut report = SectionReport::default();
     for o in outcomes {
         report.outcomes.push(match o.result {
-            Ok(()) => ItemOutcome::done(o.id, o.output_file),
-            Err(e) => ItemOutcome::skipped(o.id, o.output_file, e.to_string()),
+            Ok(()) => RegistryEntryOutcome::done(o.id, o.output_file),
+            Err(e) => RegistryEntryOutcome::skipped(o.id, o.output_file, e.to_string()),
         });
     }
 

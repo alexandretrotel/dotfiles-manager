@@ -4,11 +4,11 @@ use std::path::Path;
 use crate::context::Dfm;
 use crate::error::{Result, WrapErr};
 use crate::registry::ConfigRegistry;
-use crate::report::{ItemOutcome, SectionReport};
+use crate::report::{RegistryEntryOutcome, SectionReport};
 use crate::utils::fs::{sync_directory, sync_file};
 
-/// Copy every enabled config registry entry into `configs_path`.
-pub(super) fn backup_configs(ctx: &Dfm, configs_path: &Path) -> Result<SectionReport> {
+/// Copy every enabled registry entry into `configs_path`.
+pub(super) fn backup_entries(ctx: &Dfm, configs_path: &Path) -> Result<SectionReport> {
     let config_registry_path = ctx.config_registry_path();
     let config_registry = ConfigRegistry::load_or_create(&config_registry_path)
         .wrap_err_with(|| format!("Load config registry: {}", config_registry_path.display()))?;
@@ -48,9 +48,9 @@ pub(super) fn backup_configs(ctx: &Dfm, configs_path: &Path) -> Result<SectionRe
         })();
 
         report.outcomes.push(match entry_result {
-            Ok(Some(note)) => ItemOutcome::done_with_note(id, &entry.source_path, note),
-            Ok(None) => ItemOutcome::done(id, &entry.source_path),
-            Err(e) => ItemOutcome::skipped(id, &entry.source_path, e.to_string()),
+            Ok(Some(note)) => RegistryEntryOutcome::done_with_note(id, &entry.source_path, note),
+            Ok(None) => RegistryEntryOutcome::done(id, &entry.source_path),
+            Err(e) => RegistryEntryOutcome::skipped(id, &entry.source_path, e.to_string()),
         });
     }
 
@@ -96,7 +96,7 @@ mod tests {
         let configs_path = dir.path().join("configs");
         fs::create_dir_all(&configs_path).unwrap();
 
-        let report = backup_configs(&ctx, &configs_path).unwrap();
+        let report = backup_entries(&ctx, &configs_path).unwrap();
 
         assert_eq!(report.succeeded(), 1);
         assert_eq!(fs::read(configs_path.join("file.txt")).unwrap(), b"hello");
@@ -118,7 +118,7 @@ mod tests {
         let configs_path = dir.path().join("configs");
         fs::create_dir_all(&configs_path).unwrap();
 
-        let report = backup_configs(&ctx, &configs_path).unwrap();
+        let report = backup_entries(&ctx, &configs_path).unwrap();
 
         assert_eq!(report.succeeded(), 1);
         assert_eq!(
@@ -144,7 +144,7 @@ mod tests {
         let configs_path = dir.path().join("configs");
         fs::create_dir_all(&configs_path).unwrap();
 
-        let report = backup_configs(&ctx, &configs_path).unwrap();
+        let report = backup_entries(&ctx, &configs_path).unwrap();
 
         assert_eq!(report.succeeded(), 0);
         assert_eq!(report.skipped(), 1);

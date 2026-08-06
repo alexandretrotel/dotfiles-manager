@@ -1,7 +1,7 @@
 use anstream::{eprintln, println};
 use anstyle::{AnsiColor, Style};
 use dotfiles_manager::doctor::{DoctorReport, FixedFile, Severity};
-use dotfiles_manager::{ItemStatus, SectionReport};
+use dotfiles_manager::{RegistryEntryStatus, SectionReport};
 
 const GREEN: Style = AnsiColor::Green.on_default();
 const YELLOW: Style = AnsiColor::Yellow.on_default();
@@ -29,7 +29,7 @@ pub fn red(text: &str) -> String {
     color(text, RED)
 }
 
-/// Print a backup/restore section: warnings first, then one line per item.
+/// Print a backup/restore section: warnings first, then one line per entry.
 fn print_section(title: &str, section: &SectionReport) {
     println!("   {}: {} entries", title, section.outcomes.len());
 
@@ -39,13 +39,13 @@ fn print_section(title: &str, section: &SectionReport) {
 
     for outcome in &section.outcomes {
         match &outcome.status {
-            ItemStatus::Done { note } => {
+            RegistryEntryStatus::Done { note } => {
                 println!("     {} {}", green("✔"), outcome.label);
                 if let Some(note) = note {
                     println!("       {}", note);
                 }
             }
-            ItemStatus::Skipped { reason } => {
+            RegistryEntryStatus::Skipped { reason } => {
                 eprintln!(
                     "{}",
                     yellow(&format!(
@@ -58,7 +58,7 @@ fn print_section(title: &str, section: &SectionReport) {
     }
 }
 
-/// Print a section's per-item lines followed by its succeeded/skipped
+/// Print a section's per-entry lines followed by its succeeded/skipped
 /// summary.
 pub fn print_section_with_summary(title: &str, section: &SectionReport) {
     print_section(title, section);

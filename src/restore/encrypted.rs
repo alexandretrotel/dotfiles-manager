@@ -9,7 +9,7 @@ use crate::encryption::{
 };
 use crate::profiles::ActiveProfile;
 use crate::registry::{EncryptedRegistry, EncryptedRegistryEntry};
-use crate::report::{ItemOutcome, SectionReport};
+use crate::report::{RegistryEntryOutcome, SectionReport};
 
 /// Restore every enabled encrypted registry entry from the encrypted bundle.
 pub(super) fn restore_encrypted_configs(
@@ -97,10 +97,10 @@ fn restore_from_bundle_members(
         };
 
         let outcome = result.map_or_else(
-            |reason| ItemOutcome::skipped(id, &entry.source_path, reason),
+            |reason| RegistryEntryOutcome::skipped(id, &entry.source_path, reason),
             |note| match note {
-                Some(note) => ItemOutcome::done_with_note(id, &entry.source_path, note),
-                None => ItemOutcome::done(id, &entry.source_path),
+                Some(note) => RegistryEntryOutcome::done_with_note(id, &entry.source_path, note),
+                None => RegistryEntryOutcome::done(id, &entry.source_path),
             },
         );
 
@@ -352,7 +352,7 @@ mod tests {
         assert_eq!(report.outcomes.len(), 1);
         assert_eq!(report.succeeded(), 1);
         match &report.outcomes[0].status {
-            crate::report::ItemStatus::Done { note: Some(note) } => {
+            crate::report::RegistryEntryStatus::Done { note: Some(note) } => {
                 assert!(note.contains("failed to create directory for"));
             }
             other => panic!("expected Done with note, got {other:?}"),

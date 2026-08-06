@@ -41,14 +41,14 @@ pub fn run(
     let packages_path = ctx.packages_dir();
     fs::create_dir_all(&packages_path)?;
 
-    let configs = config::backup_configs(ctx, &backup_path)?;
+    let configs = config::backup_entries(ctx, &backup_path)?;
     let packages = package::backup_packages(ctx, &packages_path)?;
 
     let encrypted = match password {
         Some(password) => {
             let encrypted_backup_path = profile.encrypted_backup_path(ctx);
             fs::create_dir_all(&encrypted_backup_path)?;
-            Some(encrypted::backup_encrypted_configs(
+            Some(encrypted::backup_encrypted_entries(
                 ctx,
                 &encrypted_backup_path,
                 password,

@@ -7,7 +7,7 @@ use crate::context::Dfm;
 use crate::error::{Result, WrapErr};
 use crate::profiles::ActiveProfile;
 use crate::registry::ConfigRegistry;
-use crate::report::{ItemOutcome, SectionReport};
+use crate::report::{RegistryEntryOutcome, SectionReport};
 
 /// Everything a restore run produced.
 #[derive(Debug, Clone)]
@@ -46,10 +46,10 @@ pub fn run(
     for (id, entry) in config_registry.get_enabled_entries() {
         let outcome = match profile.resolve_source(ctx, &entry.source_path) {
             Some(resolved) => match config::restore_config(&resolved.path, &entry.target_path) {
-                Ok(()) => ItemOutcome::done(id, &entry.source_path),
-                Err(reason) => ItemOutcome::skipped(id, &entry.source_path, reason),
+                Ok(()) => RegistryEntryOutcome::done(id, &entry.source_path),
+                Err(reason) => RegistryEntryOutcome::skipped(id, &entry.source_path, reason),
             },
-            None => ItemOutcome::skipped(id, &entry.source_path, "no backup in any layer"),
+            None => RegistryEntryOutcome::skipped(id, &entry.source_path, "no backup in any layer"),
         };
         configs.outcomes.push(outcome);
     }
@@ -68,30 +68,30 @@ pub fn run(
 mod tests {
     use super::*;
     use crate::registry::ConfigRegistryEntry;
-    use crate::report::ItemStatus;
+    use crate::report::RegistryEntryStatus;
     use std::collections::HashMap;
     use std::fs;
 
-    fn section_with(outcomes: Vec<ItemOutcome>) -> SectionReport {
+    fn section_with(outcomes: Vec<RegistryEntryOutcome>) -> SectionReport {
         SectionReport {
             outcomes,
             warnings: Vec::new(),
         }
     }
 
-    fn done(id: &str) -> ItemOutcome {
-        ItemOutcome {
+    fn done(id: &str) -> RegistryEntryOutcome {
+        RegistryEntryOutcome {
             id: id.to_string(),
             label: id.to_string(),
-            status: ItemStatus::Done { note: None },
+            status: RegistryEntryStatus::Done { note: None },
         }
     }
 
-    fn skipped(id: &str) -> ItemOutcome {
-        ItemOutcome {
+    fn skipped(id: &str) -> RegistryEntryOutcome {
+        RegistryEntryOutcome {
             id: id.to_string(),
             label: id.to_string(),
-            status: ItemStatus::Skipped {
+            status: RegistryEntryStatus::Skipped {
                 reason: "test".to_string(),
             },
         }

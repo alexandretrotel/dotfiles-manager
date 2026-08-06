@@ -11,7 +11,7 @@ use crate::encryption::{
 };
 use crate::error::{Result, WrapErr};
 use crate::registry::EncryptedRegistry;
-use crate::report::{ItemOutcome, SectionReport};
+use crate::report::{RegistryEntryOutcome, SectionReport};
 
 /// One registry entry's queued tar members: `(id, label, [(archive name, source file)])`.
 type ArchiveEntry = (String, String, Vec<TarSourceEntry>);
@@ -32,10 +32,10 @@ fn hash_file(path: &Path) -> Result<String> {
     Ok(digest.iter().map(|b| format!("{b:02x}")).collect())
 }
 
-/// Tar every enabled encrypted registry entry that exists on disk and
+/// Tar every enabled registry entry that exists on disk and
 /// encrypt it into a single bundle at `encrypted_backup_path`. Removes any
 /// existing bundle when there's nothing to archive.
-pub(super) fn backup_encrypted_configs(
+pub(super) fn backup_encrypted_entries(
     ctx: &Dfm,
     encrypted_backup_path: &Path,
     password: &SecretString,
@@ -51,7 +51,7 @@ pub(super) fn backup_encrypted_configs(
 
     for (id, entry) in enabled_entries {
         if !entry.target_path.exists() {
-            report.outcomes.push(ItemOutcome::skipped(
+            report.outcomes.push(RegistryEntryOutcome::skipped(
                 id,
                 &entry.source_path,
                 format!("missing target {}", entry.target_path.display()),
@@ -63,7 +63,7 @@ pub(super) fn backup_encrypted_configs(
             match enumerate_tar_files(&entry.source_path, &entry.target_path) {
                 Ok(members) => members,
                 Err(e) => {
-                    report.outcomes.push(ItemOutcome::skipped(
+                    report.outcomes.push(RegistryEntryOutcome::skipped(
                         id,
                         &entry.source_path,
                         format!("could not read directory: {e}"),
@@ -113,7 +113,7 @@ pub(super) fn backup_encrypted_configs(
     for (id, source_path, _) in &to_archive {
         report
             .outcomes
-            .push(ItemOutcome::done(id.clone(), source_path.clone()));
+            .push(RegistryEntryOutcome::done(id.clone(), source_path.clone()));
     }
 
     Ok(report)
@@ -160,7 +160,7 @@ mod tests {
         fs::create_dir_all(&encrypted_backup_path).unwrap();
         let password = SecretString::from("test password".to_string());
 
-        let report = backup_encrypted_configs(&ctx, &encrypted_backup_path, &password).unwrap();
+        let report = backup_encrypted_entries(&ctx, &encrypted_backup_path, &password).unwrap();
 
         assert_eq!(report.succeeded(), 1);
         let bundle = encrypted_backup_path.join(ENCRYPTED_BUNDLE_FILE);
@@ -187,11 +187,11 @@ mod tests {
         fs::create_dir_all(&encrypted_backup_path).unwrap();
         let password = SecretString::from("test password".to_string());
 
-        backup_encrypted_configs(&ctx, &encrypted_backup_path, &password).unwrap();
+        backup_encrypted_entries(&ctx, &encrypted_backup_path, &password).unwrap();
         let bundle = encrypted_backup_path.join(ENCRYPTED_BUNDLE_FILE);
         let first_ciphertext = fs::read(&bundle).unwrap();
 
-        let report = backup_encrypted_configs(&ctx, &encrypted_backup_path, &password).unwrap();
+        let report = backup_encrypted_entries(&ctx, &encrypted_backup_path, &password).unwrap();
 
         assert_eq!(report.succeeded(), 1);
         assert_eq!(fs::read(&bundle).unwrap(), first_ciphertext);
@@ -212,12 +212,12 @@ mod tests {
         fs::create_dir_all(&encrypted_backup_path).unwrap();
         let password = SecretString::from("test password".to_string());
 
-        backup_encrypted_configs(&ctx, &encrypted_backup_path, &password).unwrap();
+        backup_encrypted_entries(&ctx, &encrypted_backup_path, &password).unwrap();
         let bundle = encrypted_backup_path.join(ENCRYPTED_BUNDLE_FILE);
         let first_ciphertext = fs::read(&bundle).unwrap();
 
         fs::write(&target, b"top secret v2").unwrap();
-        backup_encrypted_configs(&ctx, &encrypted_backup_path, &password).unwrap();
+        backup_encrypted_entries(&ctx, &encrypted_backup_path, &password).unwrap();
 
         assert_ne!(fs::read(&bundle).unwrap(), first_ciphertext);
 
@@ -242,11 +242,11 @@ mod tests {
         fs::create_dir_all(&encrypted_backup_path).unwrap();
         let password = SecretString::from("test password".to_string());
 
-        backup_encrypted_configs(&ctx, &encrypted_backup_path, &password).unwrap();
+        backup_encrypted_entries(&ctx, &encrypted_backup_path, &password).unwrap();
         assert!(encrypted_backup_path.join(BUNDLE_HASH_FILE).exists());
 
         save_registry(&ctx, HashMap::new());
-        backup_encrypted_configs(&ctx, &encrypted_backup_path, &password).unwrap();
+        backup_encrypted_entries(&ctx, &encrypted_backup_path, &password).unwrap();
 
         assert!(!encrypted_backup_path.join(ENCRYPTED_BUNDLE_FILE).exists());
         assert!(!encrypted_backup_path.join(BUNDLE_HASH_FILE).exists());
@@ -266,7 +266,7 @@ mod tests {
         fs::create_dir_all(&encrypted_backup_path).unwrap();
         let password = SecretString::from("pw".to_string());
 
-        let report = backup_encrypted_configs(&ctx, &encrypted_backup_path, &password).unwrap();
+        let report = backup_encrypted_entries(&ctx, &encrypted_backup_path, &password).unwrap();
 
         assert_eq!(report.succeeded(), 0);
         assert_eq!(report.skipped(), 1);
@@ -290,7 +290,7 @@ mod tests {
         fs::create_dir_all(&encrypted_backup_path).unwrap();
         let password = SecretString::from("pw".to_string());
 
-        let report = backup_encrypted_configs(&ctx, &encrypted_backup_path, &password).unwrap();
+        let report = backup_encrypted_entries(&ctx, &encrypted_backup_path, &password).unwrap();
         assert_eq!(report.succeeded(), 1);
 
         let bundle = encrypted_backup_path.join(ENCRYPTED_BUNDLE_FILE);

@@ -33,4 +33,4 @@ mod utils;
 
 pub use context::{Dfm, ENCRYPTED_BUNDLE_FILE, PROFILE_CONFIG_FILE};
 pub use error::{Error, Result};
-pub use report::{ItemOutcome, ItemStatus, SectionReport};
+pub use report::{RegistryEntryOutcome, RegistryEntryStatus, SectionReport};
