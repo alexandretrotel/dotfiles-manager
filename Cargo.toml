@@ -8,6 +8,8 @@ documentation = "https://docs.rs/dotfiles-manager"
 repository = "https://github.com/alexandretrotel/dotfiles-manager"
 homepage = "https://github.com/alexandretrotel/dotfiles-manager"
 license = "GPL-3.0-or-later"
+keywords = ["dotfiles", "backup", "cli", "profiles", "sync"]
+categories = ["command-line-utilities", "filesystem"]
 include = ["src/**/*.rs", "Cargo.toml", "README.md", "LICENSE", "CHANGELOG.md"]
 
 [features]

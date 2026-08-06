@@ -6,7 +6,17 @@ A profile is a named set of configuration choices that represents a context, lik
 
 At a high level, dotfiles-manager helps you manage these configurations, keep them in sync, and recover them when needed.
 
-![Demo Video](./assets/dfm.gif)
+![Demo Video](https://raw.githubusercontent.com/alexandretrotel/dotfiles-manager/main/assets/dfm.gif)
+
+## Installation
+
+```bash
+cargo install dotfiles-manager
+```
+
+This builds and installs both binaries: `dotfiles-manager` and the shorter alias `dfm`.
+
+Prebuilt binaries for Linux, macOS (Intel and Apple Silicon), and Windows are also available on the [Releases page](https://github.com/alexandretrotel/dotfiles-manager/releases).
 
 ## Quick Start
 
@@ -42,6 +52,8 @@ dfm use work
 | `profile` | List, create, or delete profiles                                          |
 | `use`     | Switch the active profile                                                 |
 | `git`     | Run any git command inside `~/.dfm`                                       |
+| `status`  | Shortcut for `dfm git status`                                             |
+| `diff`    | Shortcut for `dfm git diff`                                               |
 | `sync`    | Commit and push changes inside `~/.dfm`                                   |
 | `secret`  | Store or remove the encryption passphrase in the OS keychain              |
 
