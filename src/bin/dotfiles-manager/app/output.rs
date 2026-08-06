@@ -1,6 +1,6 @@
 use anstream::{eprintln, println};
 use anstyle::{AnsiColor, Style};
-use dotfiles_manager::doctor::{DoctorFixOutcome, DoctorFixReport, DoctorReport, Severity};
+use dotfiles_manager::doctor::{DoctorReport, Severity};
 use dotfiles_manager::{ItemStatus, SectionReport};
 
 const GREEN: Style = AnsiColor::Green.on_default();
@@ -95,42 +95,4 @@ pub fn print_doctor_report(report: &DoctorReport) {
             }
         }
     }
-}
-
-/// Print each fixed file's outcome, then a reformatted/unchanged/unfixable
-/// summary line.
-pub fn print_doctor_fix_report(report: &DoctorFixReport) {
-    for entry in &report.entries {
-        match &entry.outcome {
-            DoctorFixOutcome::Unchanged => {}
-            DoctorFixOutcome::Reformatted => {
-                println!(
-                    "{}",
-                    green(&format!(
-                        " Reformatted {} ({})",
-                        entry.name,
-                        entry.path.display()
-                    ))
-                );
-            }
-            DoctorFixOutcome::Unfixable(reason) => {
-                println!("{}", red(&format!(" x {}: {}", entry.name, reason)));
-                println!(
-                    "{}",
-                    yellow(&format!(
-                        " Fix: repair the syntax manually in {}",
-                        entry.path.display()
-                    ))
-                );
-            }
-        }
-    }
-
-    println!();
-    println!(
-        "{} reformatted, {} already clean, {} unfixable",
-        report.reformatted(),
-        report.unchanged(),
-        report.unfixable()
-    );
 }

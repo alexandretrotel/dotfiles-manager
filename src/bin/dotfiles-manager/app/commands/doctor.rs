@@ -1,14 +1,13 @@
 use anstream::{eprintln, println};
-use color_eyre::eyre::{Result, WrapErr, eyre};
+use color_eyre::eyre::{Result, eyre};
 use dotfiles_manager::Dfm;
 use dotfiles_manager::profiles::{ActiveProfile, ProfileConfig};
 
-use super::with_suggestions;
-use crate::app::cli::{DoctorActions, DoctorArgs};
-use crate::app::output::{green, print_doctor_fix_report, print_doctor_report, red};
+use crate::app::cli::DoctorArgs;
+use crate::app::output::{green, print_doctor_report, red};
 use crate::app::prompt;
 
-/// Handle `dfm doctor` (and `doctor fix`).
+/// Handle `dfm doctor`.
 pub fn run(ctx: &Dfm, args: DoctorArgs) -> Result<()> {
     if let Ok(true) = ProfileConfig::save_default_if_missing(ctx) {
         println!(
@@ -19,40 +18,10 @@ pub fn run(ctx: &Dfm, args: DoctorArgs) -> Result<()> {
 
     let profile = ActiveProfile::resolve(ctx, None);
 
-    match args.action {
-        Some(DoctorActions::Fix) => fix(ctx, &profile),
-        None => validate(ctx, &profile, args.skip_encrypted, args.ask_password),
-    }
+    validate(ctx, &profile, args.skip_encrypted, args.ask_password)
 }
 
-/// Handle `dfm doctor fix`.
-fn fix(ctx: &Dfm, profile: &ActiveProfile) -> Result<()> {
-    println!("Reformatting JSON configs...");
-    println!("   Profile: {}", profile);
-
-    let report = dotfiles_manager::doctor::fix_json_configs(ctx, profile)
-        .map_err(with_suggestions)
-        .wrap_err("Doctor fix failed")?;
-
-    if report.entries.is_empty() {
-        println!("{}", green("No JSON config files to format"));
-        return Ok(());
-    }
-
-    print_doctor_fix_report(&report);
-
-    if report.unfixable() > 0 {
-        return Err(eyre!(
-            "{} file(s) have syntax errors, this cannot be repaired",
-            report.unfixable()
-        ));
-    }
-
-    println!("{}", green("Doctor fix complete"));
-    Ok(())
-}
-
-/// Handle `dfm doctor` (validation, the default action).
+/// Handle `dfm doctor` (validation).
 fn validate(
     ctx: &Dfm,
     profile: &ActiveProfile,

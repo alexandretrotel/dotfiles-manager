@@ -21,6 +21,9 @@ All notable changes to this project are documented in this file.
 - **Breaking:** Restore and `dfm doctor` no longer fall back to legacy per-file `<source_path>.age` backups when the encrypted bundle is missing or unreadable. Encrypted restore and validation now depend solely on the `dfm-encrypted-bundle.age` bundle; run `dfm backup` to produce one if you still have per-file `.age` backups from before v3.1.0.
 - Encrypted registry entries may now target directories, not just single files. The whole tree is bundled and restored; previously directories were skipped with "directories are not supported".
 
+### Removed
+- **Breaking:** `dfm doctor` no longer validates or reformats the contents of your registered `.json` config files, and `dfm doctor fix` has been removed entirely. Validating user-owned JSON files was out of scope for `doctor`; it still validates `dotfiles-manager`'s own registry files (`config.registry.json`, `package.registry.json`).
+
 ## v4.0.6
 
 ### Changed

@@ -34,9 +34,7 @@ pub enum Command {
     #[command(about = "Stage, commit, and push to the dfm repository")]
     Sync(SyncArgs),
 
-    #[command(
-        about = "Diagnose JSON configs, symlinks, and registry files (run `doctor fix` to repair)"
-    )]
+    #[command(about = "Diagnose symlinks and registry files")]
     Doctor(DoctorArgs),
 
     #[command(about = "Manage the encryption password in the system keychain")]
@@ -108,8 +106,6 @@ pub struct RestoreArgs {
 
 #[derive(Args)]
 pub struct DoctorArgs {
-    #[command(subcommand)]
-    pub action: Option<DoctorActions>,
     #[arg(
         long,
         help = "Skip encrypted configs validation (will not prompt for password)"
@@ -120,12 +116,6 @@ pub struct DoctorArgs {
         help = "Always prompt for the encryption password instead of using the one stored in the system keychain"
     )]
     pub ask_password: bool,
-}
-
-#[derive(Subcommand)]
-pub enum DoctorActions {
-    #[command(about = "Reformat valid JSON config files (cannot repair true syntax errors)")]
-    Fix,
 }
 
 #[derive(Args)]
