@@ -16,14 +16,14 @@ pub use bundle::{
 
 use crate::error::{Result, WrapErr};
 
-/// Encrypt `source` into `dest` with an age passphrase.
-pub fn encrypt_file(source: &Path, dest: &Path, password: &SecretString) -> Result<()> {
+/// Encrypt `source` into `destination` with an age passphrase.
+pub fn encrypt_file(source: &Path, destination: &Path, password: &SecretString) -> Result<()> {
     let content = fs::read(source)
         .wrap_err_with(|| format!("Read source file for encryption: {}", source.display()))?;
 
     let encryptor = age::Encryptor::with_user_passphrase(password.clone());
 
-    if let Some(parent) = dest.parent() {
+    if let Some(parent) = destination.parent() {
         fs::create_dir_all(parent)
             .wrap_err_with(|| format!("Create parent directory: {}", parent.display()))?;
     }
@@ -37,14 +37,14 @@ pub fn encrypt_file(source: &Path, dest: &Path, password: &SecretString) -> Resu
         .wrap_err("Write encrypted content")?;
     writer.finish().wrap_err("Finalize encryption output")?;
 
-    fs::write(dest, encrypted)
-        .wrap_err_with(|| format!("Write encrypted file: {}", dest.display()))?;
+    fs::write(destination, encrypted)
+        .wrap_err_with(|| format!("Write encrypted file: {}", destination.display()))?;
     Ok(())
 }
 
-/// Decrypt `source` into `dest`. On unix the restored file is made private
+/// Decrypt `source` into `destination`. On unix the restored file is made private
 /// (mode 0600).
-pub fn decrypt_file(source: &Path, dest: &Path, password: &SecretString) -> Result<()> {
+pub fn decrypt_file(source: &Path, destination: &Path, password: &SecretString) -> Result<()> {
     let encrypted = fs::read(source)
         .wrap_err_with(|| format!("Read encrypted file for decryption: {}", source.display()))?;
 
@@ -59,15 +59,15 @@ pub fn decrypt_file(source: &Path, dest: &Path, password: &SecretString) -> Resu
         .read_to_end(&mut decrypted)
         .wrap_err("Read decrypted payload")?;
 
-    if let Some(parent) = dest.parent() {
+    if let Some(parent) = destination.parent() {
         fs::create_dir_all(parent)
             .wrap_err_with(|| format!("Create parent directory: {}", parent.display()))?;
     }
 
-    fs::write(dest, decrypted)
-        .wrap_err_with(|| format!("Write decrypted file: {}", dest.display()))?;
+    fs::write(destination, decrypted)
+        .wrap_err_with(|| format!("Write decrypted file: {}", destination.display()))?;
 
-    set_private_file_permissions(dest)?;
+    set_private_file_permissions(destination)?;
 
     Ok(())
 }

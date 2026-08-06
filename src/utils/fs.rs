@@ -1,8 +1,8 @@
 use std::{collections::HashSet, ffi::OsString, fs, io, path::Path, path::PathBuf};
 
-/// Recursively copies `src` dir into `dst`, skipping symlinks.
-pub(crate) fn copy_dir_recursive(src: &Path, dst: &Path) -> io::Result<()> {
-    copy_dir(src, dst, None)
+/// Recursively copies `source` dir into `destination`, skipping symlinks.
+pub(crate) fn copy_dir_recursive(source: &Path, destination: &Path) -> io::Result<()> {
+    copy_dir(source, destination, None)
 }
 
 /// Fail with a `NotFound` error unless `source` exists.
@@ -80,28 +80,32 @@ pub(crate) fn sync_directory(source: &Path, destination: &Path) -> io::Result<Op
     Ok(None)
 }
 
-/// Mirrors `source` contents into `dest`, deleting dest entries absent from source.
+/// Mirrors `source` contents into `destination`, deleting destination entries absent from source.
 ///
 /// Recurses into shared subdirectories so stale files nested arbitrarily deep are
 /// also removed.
-pub(crate) fn sync_directory_contents(source: &Path, dest: &Path) -> io::Result<()> {
-    fs::create_dir_all(dest)?;
+pub(crate) fn sync_directory_contents(source: &Path, destination: &Path) -> io::Result<()> {
+    fs::create_dir_all(destination)?;
     let mut seen = HashSet::new();
-    copy_dir(source, dest, Some(&mut seen))?;
-    prune_extraneous(dest, &seen)
+    copy_dir(source, destination, Some(&mut seen))?;
+    prune_extraneous(destination, &seen)
 }
 
-/// Copies `src` into `dst`, skipping symlinks. When `seen` is given, every
+/// Copies `source` into `destination`, skipping symlinks. When `seen` is given, every
 /// copied entry's name is recorded into it and subdirectories are mirrored
 /// (stale entries pruned) rather than plain-copied.
-fn copy_dir(src: &Path, dst: &Path, mut seen: Option<&mut HashSet<OsString>>) -> io::Result<()> {
-    for entry in fs::read_dir(src)? {
+fn copy_dir(
+    source: &Path,
+    destination: &Path,
+    mut seen: Option<&mut HashSet<OsString>>,
+) -> io::Result<()> {
+    for entry in fs::read_dir(source)? {
         let entry = entry?;
         let name = entry.file_name();
-        let src_path = entry.path();
-        let dst_path = dst.join(&name);
+        let source_path = entry.path();
+        let destination_path = destination.join(&name);
 
-        let metadata = fs::symlink_metadata(&src_path)?;
+        let metadata = fs::symlink_metadata(&source_path)?;
         if metadata.file_type().is_symlink() {
             continue;
         }
@@ -111,13 +115,13 @@ fn copy_dir(src: &Path, dst: &Path, mut seen: Option<&mut HashSet<OsString>>) ->
         }
 
         if metadata.is_dir() {
-            fs::create_dir_all(&dst_path)?;
+            fs::create_dir_all(&destination_path)?;
             match seen.as_deref_mut() {
-                Some(_) => sync_directory_contents(&src_path, &dst_path)?,
-                None => copy_dir(&src_path, &dst_path, None)?,
+                Some(_) => sync_directory_contents(&source_path, &destination_path)?,
+                None => copy_dir(&source_path, &destination_path, None)?,
             }
         } else if metadata.is_file() {
-            fs::copy(&src_path, &dst_path)?;
+            fs::copy(&source_path, &destination_path)?;
         }
     }
     Ok(())
@@ -148,19 +152,22 @@ mod tests {
     #[test]
     fn copy_dir_recursive_copies_nested_files() {
         let dir = tempfile::tempdir().unwrap();
-        let src = dir.path().join("src");
-        let dst = dir.path().join("dst");
+        let source = dir.path().join("source");
+        let destination = dir.path().join("destination");
 
-        fs::create_dir_all(src.join("sub")).unwrap();
-        fs::write(src.join("top.txt"), "top").unwrap();
-        fs::write(src.join("sub/nested.txt"), "nested").unwrap();
-        fs::create_dir_all(&dst).unwrap();
+        fs::create_dir_all(source.join("sub")).unwrap();
+        fs::write(source.join("top.txt"), "top").unwrap();
+        fs::write(source.join("sub/nested.txt"), "nested").unwrap();
+        fs::create_dir_all(&destination).unwrap();
 
-        copy_dir_recursive(&src, &dst).unwrap();
+        copy_dir_recursive(&source, &destination).unwrap();
 
-        assert_eq!(fs::read_to_string(dst.join("top.txt")).unwrap(), "top");
         assert_eq!(
-            fs::read_to_string(dst.join("sub/nested.txt")).unwrap(),
+            fs::read_to_string(destination.join("top.txt")).unwrap(),
+            "top"
+        );
+        assert_eq!(
+            fs::read_to_string(destination.join("sub/nested.txt")).unwrap(),
             "nested"
         );
     }
@@ -169,18 +176,18 @@ mod tests {
     #[test]
     fn copy_dir_recursive_skips_symlinks() {
         let dir = tempfile::tempdir().unwrap();
-        let src = dir.path().join("src");
-        let dst = dir.path().join("dst");
+        let source = dir.path().join("source");
+        let destination = dir.path().join("destination");
 
-        fs::create_dir_all(&src).unwrap();
-        fs::write(src.join("real.txt"), "real").unwrap();
-        std::os::unix::fs::symlink(src.join("real.txt"), src.join("link.txt")).unwrap();
-        fs::create_dir_all(&dst).unwrap();
+        fs::create_dir_all(&source).unwrap();
+        fs::write(source.join("real.txt"), "real").unwrap();
+        std::os::unix::fs::symlink(source.join("real.txt"), source.join("link.txt")).unwrap();
+        fs::create_dir_all(&destination).unwrap();
 
-        copy_dir_recursive(&src, &dst).unwrap();
+        copy_dir_recursive(&source, &destination).unwrap();
 
-        assert!(dst.join("real.txt").exists());
-        assert!(!dst.join("link.txt").exists());
+        assert!(destination.join("real.txt").exists());
+        assert!(!destination.join("link.txt").exists());
     }
 
     #[test]
@@ -229,34 +236,34 @@ mod tests {
     fn sync_directory_contents_prunes_stale_entries() {
         let dir = tempfile::tempdir().unwrap();
         let source = dir.path().join("source");
-        let dest = dir.path().join("dest");
+        let destination = dir.path().join("destination");
 
         fs::create_dir_all(&source).unwrap();
         fs::write(source.join("keep.txt"), "keep").unwrap();
 
-        fs::create_dir_all(&dest).unwrap();
-        fs::write(dest.join("stale.txt"), "stale").unwrap();
+        fs::create_dir_all(&destination).unwrap();
+        fs::write(destination.join("stale.txt"), "stale").unwrap();
 
-        sync_directory_contents(&source, &dest).unwrap();
+        sync_directory_contents(&source, &destination).unwrap();
 
-        assert!(dest.join("keep.txt").exists());
-        assert!(!dest.join("stale.txt").exists());
+        assert!(destination.join("keep.txt").exists());
+        assert!(!destination.join("stale.txt").exists());
     }
 
     #[test]
     fn sync_directory_contents_prunes_stale_subdirectories() {
         let dir = tempfile::tempdir().unwrap();
         let source = dir.path().join("source");
-        let dest = dir.path().join("dest");
+        let destination = dir.path().join("destination");
 
         fs::create_dir_all(&source).unwrap();
 
-        fs::create_dir_all(dest.join("stale_dir")).unwrap();
-        fs::write(dest.join("stale_dir/f.txt"), "stale").unwrap();
+        fs::create_dir_all(destination.join("stale_dir")).unwrap();
+        fs::write(destination.join("stale_dir/f.txt"), "stale").unwrap();
 
-        sync_directory_contents(&source, &dest).unwrap();
+        sync_directory_contents(&source, &destination).unwrap();
 
-        assert!(!dest.join("stale_dir").exists());
+        assert!(!destination.join("stale_dir").exists());
     }
 
     #[test]

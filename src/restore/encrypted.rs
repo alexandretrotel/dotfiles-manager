@@ -143,24 +143,24 @@ fn restore_dir(
         let Some(relative) = member_path.strip_prefix(&prefix) else {
             continue;
         };
-        let dest = target_path.join(relative);
+        let destination = target_path.join(relative);
 
-        if let Err(e) = fs::create_dir_all(dest.parent().unwrap_or(target_path)) {
+        if let Err(e) = fs::create_dir_all(destination.parent().unwrap_or(target_path)) {
             warnings.push(format!(
                 "failed to create directory for {}: {}",
-                dest.display(),
+                destination.display(),
                 e
             ));
             continue;
         }
-        if let Err(e) = fs::write(&dest, contents) {
-            warnings.push(format!("failed to write {}: {}", dest.display(), e));
+        if let Err(e) = fs::write(&destination, contents) {
+            warnings.push(format!("failed to write {}: {}", destination.display(), e));
             continue;
         }
-        if let Err(e) = set_private_file_permissions(&dest) {
+        if let Err(e) = set_private_file_permissions(&destination) {
             warnings.push(format!(
                 "failed to set permissions on {}: {}",
-                dest.display(),
+                destination.display(),
                 e
             ));
         }
