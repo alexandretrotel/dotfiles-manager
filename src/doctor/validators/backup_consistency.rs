@@ -11,7 +11,9 @@ use crate::encryption::{
     collect_dir_tar_entries, create_temp_file, decrypt_file, load_tar_member_map,
 };
 use crate::profiles::ActiveProfile;
-use crate::registry::{ConfigRegistry, EncryptedRegistry, EncryptedRegistryEntry};
+use crate::registry::{
+    ConfigRegistry, ConfigRegistryEntry, EncryptedRegistry, EncryptedRegistryEntry,
+};
 
 const BACKUP_FIX: &str =
     "Run 'dfm backup' to update backup or 'dfm restore' to restore from backup";
@@ -25,6 +27,8 @@ pub(super) struct BackupConsistencyValidator {
 }
 
 impl BackupConsistencyValidator {
+    /// `password` is only used to validate the encrypted bundle; when
+    /// `None`, that half of the check is skipped.
     pub(super) fn new(ctx: Dfm, profile: ActiveProfile, password: Option<SecretString>) -> Self {
         Self {
             ctx,
@@ -52,14 +56,19 @@ impl Validator for BackupConsistencyValidator {
         };
 
         for (id, entry) in config_registry.get_enabled_entries() {
-            if !entry.target_path.exists() || entry.target_path.is_dir() {
+            if !entry.target_path.exists() {
                 continue;
             }
 
             let Some(resolved) = self.profile.resolve_source(ctx, &entry.source_path) else {
                 continue;
             };
-            if !resolved.path.exists() || resolved.path.is_dir() {
+            if !resolved.path.exists() {
+                continue;
+            }
+
+            if entry.target_path.is_dir() || resolved.path.is_dir() {
+                check_plain_dir_entry(id, entry, &resolved.path, &mut errors);
                 continue;
             }
 
@@ -132,6 +141,7 @@ impl Validator for BackupConsistencyValidator {
     }
 }
 
+/// Read `path`, turning any I/O error into a warning finding.
 fn read_bytes(
     path: &Path,
     what: &str,
@@ -146,6 +156,7 @@ fn read_bytes(
     })
 }
 
+/// A warning finding if `current` and `backup` differ, `None` otherwise.
 fn report_if_differs(
     current: &[u8],
     backup: &[u8],
@@ -162,9 +173,97 @@ fn report_if_differs(
     })
 }
 
-fn is_password_error(e: &impl std::fmt::Display) -> bool {
-    let msg = e.to_string().to_lowercase();
-    msg.contains("password") || msg.contains("decrypt") || msg.contains("identity")
+/// Compare every file under a directory config entry's `target_path`
+/// against its counterpart in the plaintext backup layer, recursively, and
+/// flag files present on only one side. A read failure on one file is
+/// reported as a warning and does not stop the rest of the comparison.
+fn check_plain_dir_entry(
+    id: &str,
+    entry: &ConfigRegistryEntry,
+    backup_dir: &Path,
+    errors: &mut Vec<ValidationError>,
+) {
+    let current_entries = match collect_dir_tar_entries(&entry.source_path, &entry.target_path) {
+        Ok(entries) => entries,
+        Err(e) => {
+            errors.push(ValidationError::warning(format!(
+                "Could not read directory {} for {} ({}): {}",
+                entry.target_path.display(),
+                entry.name,
+                id,
+                e
+            )));
+            return;
+        }
+    };
+    let backup_entries = match collect_dir_tar_entries(&entry.source_path, backup_dir) {
+        Ok(entries) => entries,
+        Err(e) => {
+            errors.push(ValidationError::warning(format!(
+                "Could not read backup directory {} for {} ({}): {}",
+                backup_dir.display(),
+                entry.name,
+                id,
+                e
+            )));
+            return;
+        }
+    };
+
+    let backup_by_name: HashMap<&str, &Path> = backup_entries
+        .iter()
+        .map(|(name, path)| (name.as_str(), path.as_path()))
+        .collect();
+
+    let mut seen = HashSet::with_capacity(current_entries.len());
+
+    for (member_name, path) in &current_entries {
+        seen.insert(member_name.as_str());
+
+        let current_content = match read_bytes(path, "current file", &entry.name, id) {
+            Ok(c) => c,
+            Err(warning) => {
+                errors.push(warning);
+                continue;
+            }
+        };
+
+        match backup_by_name.get(member_name.as_str()) {
+            Some(backup_path) => {
+                let backup_content = match read_bytes(backup_path, "backup file", &entry.name, id) {
+                    Ok(c) => c,
+                    Err(warning) => {
+                        errors.push(warning);
+                        continue;
+                    }
+                };
+                if let Some(warning) =
+                    report_if_differs(&current_content, &backup_content, &entry.name, id, "File")
+                {
+                    errors.push(warning);
+                }
+            }
+            None => errors.push(
+                ValidationError::warning(format!(
+                    "{} ({}): {} missing from backup",
+                    entry.name, id, member_name
+                ))
+                .with_fix(BACKUP_FIX),
+            ),
+        }
+    }
+
+    for (member_name, _) in &backup_entries {
+        if !seen.contains(member_name.as_str()) {
+            errors.push(
+                ValidationError::warning(format!(
+                    "{} ({}): {} present in backup but missing on disk",
+                    entry.name, id, member_name
+                ))
+                .with_fix(BACKUP_FIX),
+            );
+        }
+    }
 }
 
 /// Validate encrypted entries against the bundle backup.
@@ -186,7 +285,7 @@ fn check_bundle(
     };
 
     if let Err(e) = decrypt_file(bundle_path, tar_temp.path(), password) {
-        if is_password_error(&e) {
+        if e.is_password_error() {
             errors.push(ValidationError::warning(
                 "Skipping encrypted file validation: Incorrect password".to_string(),
             ));
@@ -917,5 +1016,144 @@ mod tests {
         let errors = validator.validate();
 
         assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn missing_resolved_backup_path_is_skipped() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+
+        // target_path exists, but the resolved backup source under
+        // common/profile layers does not, so this entry should be skipped
+        // rather than reported.
+        let target_path = dir.path().join("home/.bashrc");
+        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
+        fs::write(&target_path, b"current content").unwrap();
+
+        write_config_entry(&ctx, "bashrc", ".bashrc", &target_path);
+
+        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None);
+        let errors = validator.validate();
+
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn no_encrypted_bundle_found_reports_warning_when_candidates_exist() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        empty_config_registry(&ctx);
+
+        let target_path = dir.path().join("home/.ssh/config");
+        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
+        fs::write(&target_path, b"ssh config content").unwrap();
+        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &target_path);
+
+        // No bundle file is ever written, so resolve_encrypted_bundle finds
+        // nothing even though there's a candidate to validate.
+        let password = SecretString::from("pw".to_string());
+        let validator =
+            BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), Some(password));
+        let errors = validator.validate();
+
+        assert_eq!(errors.len(), 1);
+        assert_eq!(
+            errors[0].message,
+            "no encrypted bundle backup found, skipping encrypted file validation"
+        );
+    }
+
+    #[test]
+    fn encrypted_single_file_in_sync_produces_no_warnings() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        empty_config_registry(&ctx);
+        let profile = ActiveProfile::common_only();
+
+        let target_path = dir.path().join("home/.ssh/config");
+        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
+        fs::write(&target_path, b"ssh config content").unwrap();
+        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &target_path);
+
+        let password = SecretString::from("pw".to_string());
+        write_encrypted_bundle(
+            &ctx,
+            &profile,
+            &[("ssh/config", target_path.as_path())],
+            &password,
+        );
+
+        let validator = BackupConsistencyValidator::new(ctx, profile, Some(password));
+        let errors = validator.validate();
+
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn encrypted_single_file_differs_produces_warning() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        empty_config_registry(&ctx);
+        let profile = ActiveProfile::common_only();
+
+        let target_path = dir.path().join("home/.ssh/config");
+        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
+        fs::write(&target_path, b"current ssh config").unwrap();
+        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &target_path);
+
+        let stale_source = dir.path().join("stale_config");
+        fs::write(&stale_source, b"stale ssh config").unwrap();
+
+        let password = SecretString::from("pw".to_string());
+        write_encrypted_bundle(
+            &ctx,
+            &profile,
+            &[("ssh/config", stale_source.as_path())],
+            &password,
+        );
+
+        let validator = BackupConsistencyValidator::new(ctx, profile, Some(password));
+        let errors = validator.validate();
+
+        assert_eq!(errors.len(), 1);
+        assert_eq!(
+            errors[0].message,
+            "Test Encrypted (ssh_config): Encrypted file differs from backup"
+        );
+    }
+
+    #[test]
+    fn encrypted_single_file_missing_from_bundle_produces_warning() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        empty_config_registry(&ctx);
+        let profile = ActiveProfile::common_only();
+
+        let target_path = dir.path().join("home/.ssh/config");
+        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
+        fs::write(&target_path, b"ssh config content").unwrap();
+        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &target_path);
+
+        // Bundle exists, but has no member matching this entry's source
+        // path at all.
+        let other_source = dir.path().join("other_secret");
+        fs::write(&other_source, b"unrelated content").unwrap();
+
+        let password = SecretString::from("pw".to_string());
+        write_encrypted_bundle(
+            &ctx,
+            &profile,
+            &[("other/secret", other_source.as_path())],
+            &password,
+        );
+
+        let validator = BackupConsistencyValidator::new(ctx, profile, Some(password));
+        let errors = validator.validate();
+
+        assert_eq!(errors.len(), 1);
+        assert_eq!(
+            errors[0].message,
+            "Test Encrypted (ssh_config): Missing from encrypted bundle backup"
+        );
     }
 }
