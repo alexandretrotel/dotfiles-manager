@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -21,6 +21,7 @@ pub struct ProfileConfig {
 }
 
 impl Default for ProfileConfig {
+    /// Empty profile list, versioned `1.0.0`.
     fn default() -> Self {
         Self {
             version: "1.0.0".to_string(),
@@ -42,12 +43,20 @@ impl ProfileConfig {
         Self::load(&ctx.profiles_config_path()).unwrap_or_default()
     }
 
-    /// Write the profile config to `path` as pretty-printed JSON.
+    /// Write the profile config to `path` as pretty-printed JSON, sorted by
+    /// profile name for a stable diff.
     pub fn save(&self, path: &Path) -> io::Result<()> {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
         }
-        let content = serde_json::to_string_pretty(self)?;
+
+        let sorted_profiles: BTreeMap<&String, &ProfileDefinition> = self.profiles.iter().collect();
+        let sorted_config = serde_json::json!({
+            "version": self.version,
+            "profiles": sorted_profiles
+        });
+
+        let content = serde_json::to_string_pretty(&sorted_config)?;
         fs::write(path, content)
     }
 
