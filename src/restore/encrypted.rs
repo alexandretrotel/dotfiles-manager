@@ -295,6 +295,71 @@ mod tests {
     }
 
     #[test]
+    fn restore_dir_reports_note_when_a_member_path_collides_with_a_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("target_dir");
+        // Pre-create a regular file where a member needs a directory
+        // (`sub`), so `fs::create_dir_all` for that member fails while the
+        // rest of the tree still restores.
+        fs::create_dir_all(&target).unwrap();
+        fs::write(target.join("sub"), b"blocking file").unwrap();
+
+        let mut members = HashMap::new();
+        members.insert("mydir/ok.txt".to_string(), b"fine".to_vec());
+        members.insert("mydir/sub/blocked.txt".to_string(), b"nope".to_vec());
+
+        let note = restore_dir(&target, "mydir", &members).unwrap().unwrap();
+
+        assert!(note.contains("failed to create directory for"));
+        assert_eq!(fs::read(target.join("ok.txt")).unwrap(), b"fine");
+        assert!(!target.join("sub/blocked.txt").exists());
+    }
+
+    #[test]
+    fn restore_dir_reports_note_when_write_target_is_a_directory() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("target_dir");
+        // Pre-create a directory where a member needs to write a plain
+        // file, so `fs::write` for that member fails.
+        fs::create_dir_all(target.join("blocked")).unwrap();
+
+        let mut members = HashMap::new();
+        members.insert("mydir/ok.txt".to_string(), b"fine".to_vec());
+        members.insert("mydir/blocked".to_string(), b"nope".to_vec());
+
+        let note = restore_dir(&target, "mydir", &members).unwrap().unwrap();
+
+        assert!(note.contains("failed to write"));
+        assert_eq!(fs::read(target.join("ok.txt")).unwrap(), b"fine");
+    }
+
+    #[test]
+    fn restore_from_bundle_members_surfaces_a_partial_failure_as_done_with_note() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("target_dir");
+        fs::create_dir_all(&target).unwrap();
+        fs::write(target.join("sub"), b"blocking file").unwrap();
+
+        let mut members = HashMap::new();
+        members.insert("mydir/ok.txt".to_string(), b"fine".to_vec());
+        members.insert("mydir/sub/blocked.txt".to_string(), b"nope".to_vec());
+
+        let enabled_entries = vec![("dir_id".to_string(), entry("mydir", target.clone()))];
+        let mut report = SectionReport::default();
+
+        restore_from_bundle_members(&enabled_entries, &members, &mut report);
+
+        assert_eq!(report.outcomes.len(), 1);
+        assert_eq!(report.succeeded(), 1);
+        match &report.outcomes[0].status {
+            crate::report::ItemStatus::Done { note: Some(note) } => {
+                assert!(note.contains("failed to create directory for"));
+            }
+            other => panic!("expected Done with note, got {other:?}"),
+        }
+    }
+
+    #[test]
     fn restores_a_directory_member_from_the_encrypted_bundle() {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path().join("dfm"));
