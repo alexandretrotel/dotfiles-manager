@@ -24,6 +24,8 @@ pub fn run() -> Result<()> {
         Some(Command::Use(args)) => commands::r#use::run(&ctx, args),
         Some(Command::Profile(args)) => commands::profile::run(&ctx, args),
         Some(Command::Git(args)) => commands::git::run(&ctx, args),
+        Some(Command::Status(args)) => commands::git::status(&ctx, args),
+        Some(Command::Diff(args)) => commands::git::diff(&ctx, args),
         Some(Command::Sync(args)) => commands::sync::run(&ctx, args),
         Some(Command::Doctor(args)) => commands::doctor::run(&ctx, args),
         Some(Command::Secret { action }) => commands::secret::run(action),
