@@ -1,6 +1,6 @@
 use anstream::{eprintln, println};
 use anstyle::{AnsiColor, Style};
-use dotfiles_manager::doctor::{DoctorReport, Severity};
+use dotfiles_manager::doctor::{DoctorReport, FixedFile, Severity};
 use dotfiles_manager::{ItemStatus, SectionReport};
 
 const GREEN: Style = AnsiColor::Green.on_default();
@@ -94,5 +94,82 @@ pub fn print_doctor_report(report: &DoctorReport) {
                 }
             }
         }
+    }
+}
+
+/// Print the outcome of `dfm doctor --fix` rewriting each of dfm's own
+/// registry/config files.
+pub fn print_fix_report(files: &[FixedFile]) {
+    println!(" Fix");
+    for file in files {
+        match &file.outcome {
+            Ok(true) => println!(
+                "{}",
+                green(&format!(
+                    " ✔ Rewrote {} ({})",
+                    file.label,
+                    file.path.display()
+                ))
+            ),
+            Ok(false) => println!(" - {} does not exist, skipped", file.label),
+            Err(e) => println!(
+                "{}",
+                red(&format!(
+                    " x Could not rewrite {} ({}): {}",
+                    file.label,
+                    file.path.display(),
+                    e
+                ))
+            ),
+        }
+    }
+}
+
+// `print_section`, `print_doctor_report`, and `print_fix_report` write
+// directly to stdout/stderr via `anstream`'s `println!`/`eprintln!`, so
+// meaningfully asserting on their output would require capturing those
+// streams, which isn't worth the effort here. Only the pure color helpers
+// below are tested.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn green_contains_original_text() {
+        assert!(green("hello").contains("hello"));
+    }
+
+    #[test]
+    fn yellow_contains_original_text() {
+        assert!(yellow("warning").contains("warning"));
+    }
+
+    #[test]
+    fn red_contains_original_text() {
+        assert!(red("error").contains("error"));
+    }
+
+    #[test]
+    fn color_contains_original_text() {
+        assert!(color("some text", GREEN).contains("some text"));
+    }
+
+    #[test]
+    fn color_wraps_text_with_style_and_reset() {
+        let styled = color("x", RED);
+        let expected = format!("{RED}x{RED:#}");
+        assert_eq!(styled, expected);
+    }
+
+    #[test]
+    fn different_colors_produce_different_output_for_same_text() {
+        assert_ne!(green("same"), yellow("same"));
+        assert_ne!(yellow("same"), red("same"));
+        assert_ne!(green("same"), red("same"));
+    }
+
+    #[test]
+    fn empty_text_still_contains_empty_substring() {
+        assert!(green("").contains(""));
     }
 }

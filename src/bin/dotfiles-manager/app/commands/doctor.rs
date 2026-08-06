@@ -1,10 +1,11 @@
 use anstream::{eprintln, println};
 use color_eyre::eyre::{Result, eyre};
 use dotfiles_manager::Dfm;
+use dotfiles_manager::doctor::FixedFile;
 use dotfiles_manager::profiles::{ActiveProfile, ProfileConfig};
 
 use crate::app::cli::DoctorArgs;
-use crate::app::output::{green, print_doctor_report, red};
+use crate::app::output::{green, print_doctor_report, print_fix_report, red};
 use crate::app::prompt;
 
 /// Handle `dfm doctor`.
@@ -14,6 +15,15 @@ pub fn run(ctx: &Dfm, args: DoctorArgs) -> Result<()> {
             "Created default profile config at {}",
             ctx.profiles_config_path().display()
         );
+    }
+
+    if args.fix {
+        let fixed = dotfiles_manager::doctor::fix(ctx);
+        print_fix_report(&fixed);
+        println!();
+        if fixed.iter().any(FixedFile::failed) {
+            return Err(eyre!("Fix failed for one or more files"));
+        }
     }
 
     let profile = ActiveProfile::resolve(ctx, None);

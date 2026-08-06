@@ -116,6 +116,11 @@ pub struct DoctorArgs {
         help = "Always prompt for the encryption password instead of using the one stored in the system keychain"
     )]
     pub ask_password: bool,
+    #[arg(
+        long,
+        help = "Rewrite dfm's own registry/config JSON files (config.registry.json, package.registry.json, encrypted.registry.json, profiles.json) as pretty-printed, sorted JSON. Never touches user-owned backed-up config files."
+    )]
+    pub fix: bool,
 }
 
 #[derive(Args)]
