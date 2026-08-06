@@ -58,6 +58,9 @@ pub enum Error {
     #[error("encryption error: {0}")]
     Encryption(String),
 
+    #[error("incorrect password")]
+    IncorrectPassword,
+
     #[error("could not determine home directory")]
     NoHomeDir,
 
@@ -74,21 +77,45 @@ pub enum Error {
     Message(String),
 }
 
+impl Error {
+    /// Whether this error (or one it wraps via [`Error::Context`]) is an
+    /// [`Error::IncorrectPassword`] — i.e. decryption failed specifically
+    /// because the passphrase was wrong, not because the file was missing,
+    /// corrupt, or unreadable for some other reason.
+    pub fn is_password_error(&self) -> bool {
+        match self {
+            Error::IncorrectPassword => true,
+            Error::Context { source, .. } => source.is_password_error(),
+            _ => false,
+        }
+    }
+}
+
 impl From<keyring_core::Error> for Error {
+    /// Wrap a system keychain lookup/store failure.
     fn from(e: keyring_core::Error) -> Self {
         Error::Keyring(e.to_string())
     }
 }
 
 impl From<age::EncryptError> for Error {
+    /// Wrap an age encryption failure.
     fn from(e: age::EncryptError) -> Self {
         Error::Encryption(e.to_string())
     }
 }
 
 impl From<age::DecryptError> for Error {
+    /// Wrap an age decryption failure, distinguishing a wrong passphrase
+    /// ([`Error::IncorrectPassword`]) from other decrypt failures.
     fn from(e: age::DecryptError) -> Self {
-        Error::Encryption(e.to_string())
+        match e {
+            // Passphrase-based (scrypt) recipients report a wrong password
+            // as a generic AEAD decryption failure, since age can't tell a
+            // bad key from tampered ciphertext.
+            age::DecryptError::DecryptionFailed => Error::IncorrectPassword,
+            other => Error::Encryption(other.to_string()),
+        }
     }
 }
 
