@@ -31,10 +31,16 @@ pub enum Command {
     #[command(about = "Run git commands in the dfm repository")]
     Git(GitArgs),
 
+    #[command(about = "Show the working tree status (shortcut for `dfm git status`)")]
+    Status(PassthroughArgs),
+
+    #[command(about = "Show changes (shortcut for `dfm git diff`)")]
+    Diff(PassthroughArgs),
+
     #[command(about = "Stage, commit, and push to the dfm repository")]
     Sync(SyncArgs),
 
-    #[command(about = "Diagnose symlinks and registry files")]
+    #[command(about = "Validate dfm's registry files and check backups for drift")]
     Doctor(DoctorArgs),
 
     #[command(about = "Manage the encryption password in the system keychain")]
@@ -126,6 +132,15 @@ pub struct DoctorArgs {
 #[derive(Args)]
 pub struct GitArgs {
     #[arg(trailing_var_arg = true, allow_hyphen_values = true, required = true)]
+    pub args: Vec<String>,
+}
+
+/// Trailing args forwarded as-is to the underlying `git` invocation, for
+/// `dfm status`/`dfm diff` shortcuts. Unlike [`GitArgs`], empty is valid
+/// (e.g. plain `dfm status`).
+#[derive(Args)]
+pub struct PassthroughArgs {
+    #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
     pub args: Vec<String>,
 }
 
