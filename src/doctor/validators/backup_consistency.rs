@@ -8,7 +8,7 @@ use super::Validator;
 use crate::context::Dfm;
 use crate::doctor::report::ValidationError;
 use crate::encryption::{
-    TarEntryRef, TarMemberMap, create_temp_file, decrypt_file, enumerate_tar_files, load_tar_files,
+    TarMemberMap, create_temp_file, decrypt_file, enumerate_tar_files, load_tar_files,
 };
 use crate::profiles::ActiveProfile;
 use crate::registry::{
@@ -429,7 +429,7 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::context::{Dfm, ENCRYPTED_BUNDLE_FILE};
-    use crate::encryption::{encrypt_file, write_tar_archive};
+    use crate::encryption::{encrypt_file, write_tar_archive, TarEntryRef};
     use crate::registry::EncryptedRegistry;
 
     use super::*;

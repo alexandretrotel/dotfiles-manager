@@ -125,6 +125,7 @@ mod tests {
     use crate::encryption::{decrypt_file, load_tar_files};
     use crate::registry::EncryptedRegistryEntry;
     use std::collections::HashMap;
+    use std::path::PathBuf;
 
     fn entry(source_path: &str, target_path: PathBuf) -> EncryptedRegistryEntry {
         EncryptedRegistryEntry {
