@@ -37,7 +37,9 @@ macro_rules! impl_registry_entry_like {
 /// A JSON-backed map of registry entries stored on disk.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Registry<T> {
+    /// Schema version of the registry file, for future migrations.
     pub version: String,
+    /// Registry entries keyed by their unique id.
     pub entries: HashMap<String, T>,
 }
 

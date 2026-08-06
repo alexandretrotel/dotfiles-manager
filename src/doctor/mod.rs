@@ -1,3 +1,5 @@
+//! Diagnostics for detecting and repairing inconsistencies in dfm's managed state.
+
 mod fix;
 mod report;
 mod validators;

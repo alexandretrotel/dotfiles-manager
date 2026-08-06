@@ -16,6 +16,7 @@ pub struct RegistryEntryOutcome {
     pub id: String,
     /// Human-oriented label (usually the backup path).
     pub label: String,
+    /// Whether the entry completed or was skipped, and any related detail.
     pub status: RegistryEntryStatus,
 }
 
@@ -68,6 +69,7 @@ impl RegistryEntryOutcome {
 /// Per-section results of a backup or restore run.
 #[derive(Debug, Clone, Default)]
 pub struct SectionReport {
+    /// Per-entry results processed within this section.
     pub outcomes: Vec<RegistryEntryOutcome>,
     /// Non-fatal warnings that apply to the section as a whole (e.g. an
     /// encrypted bundle that could not be decrypted).

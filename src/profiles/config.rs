@@ -10,13 +10,16 @@ use crate::context::Dfm;
 /// Metadata for one profile entry in [`ProfileConfig`].
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ProfileDefinition {
+    /// Optional human-readable description of the profile.
     pub description: Option<String>,
 }
 
 /// The on-disk list of known profiles (`profiles.json`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProfileConfig {
+    /// Schema version of the config file.
     pub version: String,
+    /// Known profiles, keyed by name.
     pub profiles: HashMap<String, ProfileDefinition>,
 }
 

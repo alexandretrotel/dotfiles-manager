@@ -18,9 +18,13 @@ use crate::report::SectionReport;
 /// Everything a backup run produced.
 #[derive(Debug, Clone)]
 pub struct BackupReport {
+    /// The profile that was backed up.
     pub profile: ActiveProfile,
+    /// Outcome of ensuring the dfm git repository exists.
     pub repo: git::InitReport,
+    /// Outcome of backing up config registry entries.
     pub configs: SectionReport,
+    /// Outcome of backing up package manager lists.
     pub packages: SectionReport,
     /// `None` when encrypted backup was skipped (no password supplied).
     pub encrypted: Option<SectionReport>,

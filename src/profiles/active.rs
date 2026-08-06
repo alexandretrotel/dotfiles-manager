@@ -8,6 +8,7 @@ use crate::context::Dfm;
 /// layered on top of `common`, or `common` alone.
 #[derive(Debug, Clone)]
 pub struct ActiveProfile {
+    /// Name of the targeted profile, or `None` for the `common` layer only.
     pub name: Option<String>,
 }
 
@@ -105,9 +106,10 @@ pub fn clear_active_profile(ctx: &Dfm) -> io::Result<()> {
     Ok(())
 }
 
-// `DFM_PROFILE` is process-global state; every test in this crate that reads
-// or writes it (directly, or transitively via `resolve`/
-// `get_active_profile_name`) locks this first so they don't race each other.
+/// Lock guarding the process-global `DFM_PROFILE` env var; every test in
+/// this crate that reads or writes it (directly, or transitively via
+/// `resolve`/`get_active_profile_name`) locks this first so they don't race
+/// each other.
 #[cfg(test)]
 pub(crate) static ACTIVE_PROFILE_ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 

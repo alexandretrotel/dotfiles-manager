@@ -7,8 +7,11 @@ use crate::registry::Registry;
 /// A single sensitive file, backed up age-encrypted rather than plaintext.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EncryptedRegistryEntry {
+    /// Human-readable label for this entry (e.g. `SSH Config`).
     pub name: String,
+    /// Optional human-readable explanation of what this entry backs up.
     pub description: Option<String>,
+    /// Whether this entry is processed during backup/restore.
     pub enabled: bool,
     /// Path relative to a backup layer's encrypted directory, and the
     /// archive member name inside the encrypted bundle.

@@ -1,3 +1,5 @@
+//! CLI subcommand implementations, one module per `dfm` command.
+
 pub mod backup;
 pub mod doctor;
 pub mod edit;

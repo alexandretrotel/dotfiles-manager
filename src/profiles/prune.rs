@@ -10,14 +10,18 @@ use crate::error::{Result, WrapErr};
 /// renamed) without also removing its backup directory.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OrphanedProfile {
+    /// Name of the directory (i.e. the profile name it once belonged to).
     pub name: String,
+    /// Path to the orphaned backup directory.
     pub directory: PathBuf,
 }
 
 /// A directory removed by [`prune_orphaned_profiles`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PrunedProfile {
+    /// Name of the profile whose directory was removed.
     pub name: String,
+    /// Path to the directory that was deleted.
     pub directory: PathBuf,
 }
 

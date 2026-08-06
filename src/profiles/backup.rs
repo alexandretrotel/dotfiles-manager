@@ -6,7 +6,9 @@ use crate::context::{Dfm, ENCRYPTED_BUNDLE_FILE};
 /// Which backup layer a backup file was found in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BackupLayer {
+    /// The shared layer used regardless of which profile is active.
     Common,
+    /// A named profile's own layer, stacked on top of `Common`.
     Profile,
 }
 
@@ -23,7 +25,9 @@ impl std::fmt::Display for BackupLayer {
 /// A backup file found on disk, together with which layer it came from.
 #[derive(Debug, Clone)]
 pub struct ResolvedBackup {
+    /// Filesystem path where the backup file was found.
     pub path: PathBuf,
+    /// Layer (`common` or `profile`) the backup file was found in.
     pub layer: BackupLayer,
 }
 

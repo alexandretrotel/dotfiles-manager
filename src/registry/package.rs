@@ -8,8 +8,11 @@ use crate::registry::Registry;
 /// during backup.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PackageRegistryEntry {
+    /// Human-readable label for this entry (e.g. `Homebrew`).
     pub name: String,
+    /// Optional human-readable explanation of what this entry exports.
     pub description: Option<String>,
+    /// Whether this entry is processed during backup/restore.
     pub enabled: bool,
     /// The package manager's executable name (e.g. `brew`).
     pub command: String,

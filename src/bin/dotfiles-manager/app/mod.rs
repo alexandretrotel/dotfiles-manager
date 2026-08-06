@@ -1,3 +1,5 @@
+//! CLI entry point: parses arguments and dispatches to command handlers.
+
 pub(crate) mod cli;
 pub(crate) mod commands;
 pub(crate) mod output;

@@ -1,15 +1,22 @@
 /// Severity of a validation finding.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Severity {
+    /// A finding that fails the overall validation run.
     Error,
+    /// A finding that is reported but does not fail the run.
     Warning,
+    /// A purely informational finding.
     Info,
 }
 
+/// A single finding produced by a validator.
 #[derive(Debug, Clone)]
 pub struct ValidationError {
+    /// How severe this finding is.
     pub severity: Severity,
+    /// Human-readable description of the finding.
     pub message: String,
+    /// Optional suggested remediation for this finding.
     pub fix_suggestion: Option<String>,
 }
 
@@ -51,6 +58,7 @@ impl ValidationError {
 /// Findings of a full validation run, grouped by validator.
 #[derive(Debug, Clone, Default)]
 pub struct DoctorReport {
+    /// Findings recorded by each validator, in the order they ran.
     results: Vec<(String, Vec<ValidationError>)>,
 }
 

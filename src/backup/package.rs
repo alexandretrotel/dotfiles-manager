@@ -49,8 +49,11 @@ pub(super) fn backup_packages(ctx: &Dfm, packages_path: &Path) -> Result<Section
 
 /// Result of exporting one package manager's installed-package list.
 struct PackageBackupOutcome {
+    /// Registry id of the package manager entry that was exported.
     id: String,
+    /// Name of the file the export was (or would have been) written to.
     output_file: String,
+    /// Outcome of running the export command and writing its output.
     result: Result<()>,
 }
 

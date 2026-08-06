@@ -3,8 +3,11 @@ use anstyle::{AnsiColor, Style};
 use dotfiles_manager::doctor::{DoctorReport, FixedFile, Severity};
 use dotfiles_manager::{RegistryEntryStatus, SectionReport};
 
+/// Style used to render success/positive output in green.
 const GREEN: Style = AnsiColor::Green.on_default();
+/// Style used to render warning output in yellow.
 const YELLOW: Style = AnsiColor::Yellow.on_default();
+/// Style used to render error output in red.
 const RED: Style = AnsiColor::Red.on_default();
 
 /// Wrap `text` in the given style, resetting after it. Rendered through

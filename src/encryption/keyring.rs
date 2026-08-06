@@ -5,7 +5,11 @@ use keyring_core::{Entry, Error as KeyringError, set_default_store};
 
 use crate::error::{Error, Result, WrapErr};
 
+/// Service name under which the encryption password is stored in the system
+/// keychain.
 const KEYRING_SERVICE: &str = "dotfiles-manager";
+/// Username/account name under which the encryption password is stored in
+/// the system keychain.
 const KEYRING_USERNAME: &str = "encryption";
 
 /// Register the platform-native keychain backend as the default

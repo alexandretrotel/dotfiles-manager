@@ -9,58 +9,89 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum Error {
+    /// An underlying filesystem I/O operation failed.
     #[error(transparent)]
     Io(#[from] std::io::Error),
 
+    /// A registry or config file's JSON failed to parse or serialize.
     #[error(transparent)]
     Json(#[from] serde_json::Error),
 
+    /// Bytes read from a file or command output were not valid UTF-8.
     #[error(transparent)]
     Utf8(#[from] std::string::FromUtf8Error),
 
+    /// An external command exited with a non-zero (or missing) status.
     #[error("command '{cmd}' failed with status {status:?}: {stderr}")]
     CommandFailure {
+        /// The command line that was run.
         cmd: String,
+        /// The process's exit code, or `None` if it was terminated by a signal.
         status: Option<i32>,
+        /// Captured standard error output from the command.
         stderr: String,
     },
 
+    /// No git repository was found at `path` or any of its ancestors.
     #[error("no git repository found in {}", path.display())]
-    NoGitRepository { path: PathBuf },
+    NoGitRepository {
+        /// The path where a git repository was expected.
+        path: PathBuf,
+    },
 
+    /// The target data directory already exists and is not empty, so it
+    /// cannot be initialized.
     #[error("{} already exists and is not empty", path.display())]
-    DataDirAlreadyExists { path: PathBuf },
+    DataDirAlreadyExists {
+        /// The path of the already-existing, non-empty data directory.
+        path: PathBuf,
+    },
 
+    /// The given string is not a valid GitHub repository reference; occurs
+    /// when it's neither a URL nor an `owner/repo` shorthand.
     #[error("'{0}' is not a valid GitHub repo; use a URL or `owner/repo`")]
     InvalidRepo(String),
 
+    /// The named profile does not exist in the profile registry.
     #[error("profile '{0}' does not exist")]
     ProfileNotFound(String),
 
+    /// A profile with this name already exists.
     #[error("profile '{0}' already exists")]
     ProfileExists(String),
 
+    /// A profile name was empty, which is not allowed.
     #[error("profile name cannot be empty")]
     EmptyProfileName,
 
+    /// A profile name contained characters other than letters, numbers,
+    /// hyphens, or underscores.
     #[error("profile name can only contain letters, numbers, hyphens, and underscores")]
     InvalidProfileName(String),
 
+    /// The named profile is currently active and cannot be deleted until
+    /// another profile is made active first.
     #[error("cannot delete active profile '{0}'; switch to another profile first")]
     DeleteActiveProfile(String),
 
+    /// A password was empty, which is not allowed.
     #[error("password cannot be empty")]
     EmptyPassword,
 
+    /// The system keychain failed to store or retrieve a secret.
     #[error("keychain error: {0}")]
     Keyring(String),
 
+    /// An age encryption or decryption operation failed for a reason other
+    /// than an incorrect passphrase.
     #[error("encryption error: {0}")]
     Encryption(String),
 
+    /// Decryption failed because the supplied passphrase was wrong.
     #[error("incorrect password")]
     IncorrectPassword,
 
+    /// The current user's home directory could not be determined.
     #[error("could not determine home directory")]
     NoHomeDir,
 
@@ -68,11 +99,16 @@ pub enum Error {
     /// the original error as its source (see `WrapErr`).
     #[error("{msg}")]
     Context {
+        /// The human-readable context message describing what was being
+        /// attempted when `source` occurred.
         msg: String,
+        /// The underlying error being wrapped.
         #[source]
         source: Box<Error>,
     },
 
+    /// A one-off error carrying only a plain message, with no structured
+    /// variant of its own.
     #[error("{0}")]
     Message(String),
 }
@@ -128,6 +164,8 @@ pub(crate) trait WrapErr<T> {
 }
 
 impl<T, E: Into<Error>> WrapErr<T> for std::result::Result<T, E> {
+    /// Map any error to an [`Error::Context`] carrying `msg`, preserving it
+    /// as the source; leaves `Ok` values untouched.
     fn wrap_err(self, msg: impl Into<String>) -> Result<T> {
         self.map_err(|e| Error::Context {
             msg: msg.into(),
@@ -135,6 +173,8 @@ impl<T, E: Into<Error>> WrapErr<T> for std::result::Result<T, E> {
         })
     }
 
+    /// Map any error to an [`Error::Context`] carrying the message returned
+    /// by `f`, preserving it as the source; leaves `Ok` values untouched.
     fn wrap_err_with(self, f: impl FnOnce() -> String) -> Result<T> {
         self.map_err(|e| Error::Context {
             msg: f(),

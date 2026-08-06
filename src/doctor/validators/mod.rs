@@ -20,6 +20,7 @@ pub(crate) trait Validator {
 
 /// The full set of `dfm doctor` checks, run in a fixed order.
 pub(crate) struct ValidationSuite {
+    /// The validators to run, in execution order.
     validators: Vec<Box<dyn Validator>>,
 }
 

@@ -7,8 +7,11 @@ use crate::registry::Registry;
 /// A single plain-config file or directory to back up and restore.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConfigRegistryEntry {
+    /// Human-readable label for this entry (e.g. `Bash Configuration`).
     pub name: String,
+    /// Optional human-readable explanation of what this entry backs up.
     pub description: Option<String>,
+    /// Whether this entry is processed during backup/restore.
     pub enabled: bool,
     /// Path relative to a backup layer directory (e.g. `.bashrc`).
     pub backup_path: String,

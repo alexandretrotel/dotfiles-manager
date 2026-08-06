@@ -1,3 +1,5 @@
+//! Stages, commits, and pushes the dotfiles repo in one step.
+
 use std::path::Path;
 use std::process::Command;
 

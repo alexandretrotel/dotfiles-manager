@@ -9,6 +9,7 @@ use std::io::{Read, Write};
 use std::path::Path;
 
 use age::secrecy::SecretString;
+/// Tar bundling helpers used to pack and unpack encrypted backup archives.
 pub use bundle::{
     TarEntryRef, TarMemberMap, TarOriginalEntry, create_temp_file, enumerate_tar_files,
     load_tar_files, set_private_file_permissions, write_tar_archive,

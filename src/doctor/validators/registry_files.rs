@@ -11,6 +11,7 @@ use crate::utils::process::is_command_available;
 /// Checks the config and package registries parse, have no duplicate backup
 /// paths, and reference package managers available on `PATH`.
 pub(super) struct RegistryFilesValidator {
+    /// dfm context giving access to registry file paths.
     ctx: Dfm,
 }
 
@@ -59,6 +60,7 @@ fn load_registry<T: serde::de::DeserializeOwned>(
 }
 
 impl Validator for RegistryFilesValidator {
+    /// Parse both registries and check for duplicate backup paths and unavailable package managers.
     fn validate(&self) -> Vec<ValidationError> {
         let mut errors = Vec::new();
 
@@ -110,6 +112,7 @@ impl Validator for RegistryFilesValidator {
         errors
     }
 
+    /// Display name for this check, shown in the report.
     fn name(&self) -> &str {
         "Registry Files"
     }

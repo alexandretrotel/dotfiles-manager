@@ -11,7 +11,9 @@ pub const COMMON_PROFILE_NAMES: [&str; 2] = ["common", "none"];
 /// A profile that was just created by [`create_profile`].
 #[derive(Debug, Clone)]
 pub struct CreatedProfile {
+    /// Name of the newly created profile.
     pub name: String,
+    /// Optional human-readable description supplied for the profile.
     pub description: Option<String>,
     /// Directory created for the profile's backups.
     pub directory: PathBuf,
@@ -21,6 +23,7 @@ pub struct CreatedProfile {
 /// [`delete_profile`].
 #[derive(Debug, Clone)]
 pub struct DeletedProfile {
+    /// Name of the profile that was removed.
     pub name: String,
     /// Backup directory left on disk (never removed automatically), if any.
     pub retained_directory: Option<PathBuf>,

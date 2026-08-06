@@ -31,6 +31,9 @@ pub mod restore;
 pub mod sync;
 mod utils;
 
+/// The dfm runtime context, plus well-known file names inside the dfm root.
 pub use context::{Dfm, ENCRYPTED_BUNDLE_FILE, PROFILE_CONFIG_FILE};
+/// The crate's error and result types.
 pub use error::{Error, Result};
+/// Report types describing the outcome of registry-driven operations.
 pub use report::{RegistryEntryOutcome, RegistryEntryStatus, SectionReport};

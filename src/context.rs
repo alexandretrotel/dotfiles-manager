@@ -2,16 +2,22 @@ use std::path::{Path, PathBuf};
 
 use crate::error::{Error, Result};
 
+/// Name of the directory (under the dfm root) that holds all backup output.
 pub(crate) const BACKUP_DIR: &str = "backup";
+/// Name of the profile-independent backup layer directory.
 pub(crate) const COMMON_DIR: &str = "common";
+/// Name of the subdirectory holding a layer's encrypted files.
 pub(crate) const ENCRYPTED_DIR: &str = "encrypted";
+/// Name of the directory holding all named profiles' backup layers.
 pub(crate) const PROFILES_DIR: &str = "profiles";
+/// Name of the directory holding package-manager export files.
 pub(crate) const PACKAGES_DIR: &str = "packages";
 
 /// Name of the encrypted bundle file inside an encrypted backup directory.
 pub const ENCRYPTED_BUNDLE_FILE: &str = "dfm-encrypted-bundle.age";
 /// Name of the profile configuration file inside the dfm root.
 pub const PROFILE_CONFIG_FILE: &str = "profiles.json";
+/// Name of the file (under the dfm root) recording the active profile.
 pub(crate) const ACTIVE_PROFILE_FILE: &str = ".active-profile";
 
 /// Handle to a dfm data directory (by default `~/.dfm`).
@@ -20,6 +26,7 @@ pub(crate) const ACTIVE_PROFILE_FILE: &str = ".active-profile";
 /// them at any root directory.
 #[derive(Debug, Clone)]
 pub struct Dfm {
+    /// Root directory this handle is rooted at.
     root: PathBuf,
 }
 

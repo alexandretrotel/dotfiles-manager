@@ -1,3 +1,5 @@
+//! Restore backed-up configs and encrypted registry entries to their original locations.
+
 mod config;
 mod encrypted;
 
@@ -12,7 +14,9 @@ use crate::report::{RegistryEntryOutcome, SectionReport};
 /// Everything a restore run produced.
 #[derive(Debug, Clone)]
 pub struct RestoreReport {
+    /// The profile the restore ran against.
     pub profile: ActiveProfile,
+    /// Outcome of restoring plaintext config entries.
     pub configs: SectionReport,
     /// `None` when encrypted restore was skipped (no password supplied).
     pub encrypted: Option<SectionReport>,

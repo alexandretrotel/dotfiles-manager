@@ -15,15 +15,20 @@ use crate::registry::{
     ConfigRegistry, ConfigRegistryEntry, EncryptedRegistry, EncryptedRegistryEntry,
 };
 
+/// Suggested remediation attached to backup drift findings.
 const BACKUP_FIX: &str =
     "Run 'dfm backup' to update backup or 'dfm restore' to restore from backup";
 
 /// Compares current files on disk against their backups (and, with a
 /// password, encrypted backups) and warns on drift.
 pub(super) struct BackupConsistencyValidator {
+    /// dfm context giving access to registry and backup paths.
     ctx: Dfm,
+    /// Active profile used to resolve backup paths.
     profile: ActiveProfile,
+    /// Password used to decrypt the encrypted bundle, if the encrypted check should run.
     password: Option<SecretString>,
+    /// Whether disabled registry entries are also checked.
     include_disabled: bool,
 }
 
@@ -47,6 +52,7 @@ impl BackupConsistencyValidator {
 }
 
 impl Validator for BackupConsistencyValidator {
+    /// Compare current files and, if a password is set, the encrypted bundle, against their backups.
     fn validate(&self) -> Vec<ValidationError> {
         let mut errors = Vec::new();
         let ctx = &self.ctx;
@@ -144,6 +150,7 @@ impl Validator for BackupConsistencyValidator {
         errors
     }
 
+    /// Display name for this check, shown in the report.
     fn name(&self) -> &str {
         "Backup Consistency Check"
     }
