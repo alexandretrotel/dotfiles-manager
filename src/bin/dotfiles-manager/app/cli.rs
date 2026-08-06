@@ -269,6 +269,24 @@ mod tests {
     }
 
     #[test]
+    fn status_allows_no_trailing_args() {
+        let cli = Cli::try_parse_from(["dfm", "status"]).unwrap();
+        match cli.command {
+            Some(Command::Status(args)) => assert!(args.args.is_empty()),
+            _ => panic!("expected Status command"),
+        }
+    }
+
+    #[test]
+    fn diff_passes_through_trailing_hyphen_values() {
+        let cli = Cli::try_parse_from(["dfm", "diff", "--stat"]).unwrap();
+        match cli.command {
+            Some(Command::Diff(args)) => assert_eq!(args.args, vec!["--stat"]),
+            _ => panic!("expected Diff command"),
+        }
+    }
+
+    #[test]
     fn sync_message_defaults_to_none() {
         let cli = Cli::try_parse_from(["dfm", "sync"]).unwrap();
         match cli.command {
