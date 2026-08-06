@@ -7,6 +7,7 @@ All notable changes to this project are documented in this file.
 > **Note:** Versioning restarts at 1.0.0 following the rename from `mntn` to `dotfiles-manager`. This is not a downgrade — it is a fresh start for the `dotfiles-manager` crate name. The previous `mntn` history (up through v5.0.0) is preserved below for reference.
 
 ### Added
+- **`dfm status`** and **`dfm diff`** are shortcuts for `dfm git status` and `dfm git diff`; extra args pass through (e.g. `dfm diff --stat`).
 - **`dfm doctor --fix`** rewrites dfm's own `config.registry.json`, `package.registry.json`, `encrypted.registry.json`, and `profiles.json` as pretty-printed, deterministically-sorted JSON. It only touches these bookkeeping files — never the user-owned config files dfm backs up.
 - `dotfiles-manager` is now usable as a library: operations live in `dotfiles_manager::backup`, `dotfiles_manager::restore`, `dotfiles_manager::sync`, `dotfiles_manager::git`, `dotfiles_manager::doctor`, `dotfiles_manager::profiles`, `dotfiles_manager::keyring`, `dotfiles_manager::encryption`, and `dotfiles_manager::registry`, take a `Dfm` context (custom root supported via `Dfm::with_root`), and return report structs instead of printing. The CLI ships two binaries, `dotfiles-manager` and the shorter alias `dfm`, behind the default `cli` feature; depend on the library with `default-features = false`.
 - `dfm link <repo>` clones a dotfiles repo (URL or `owner/repo`) into `~/.dfm` and restores it in one step — the command to run when setting up a new machine.
