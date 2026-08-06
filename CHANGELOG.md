@@ -7,8 +7,17 @@ All notable changes to this project are documented in this file.
 > **Note:** Versioning restarts at 1.0.0 following the rename from `mntn` to `dotfiles-manager`. This is not a downgrade — it is a fresh start for the `dotfiles-manager` crate name. The previous `mntn` history (up through v5.0.0) is preserved below for reference.
 
 ### Added
+- **`dfm doctor --fix`** rewrites dfm's own `config.registry.json`, `package.registry.json`, `encrypted.registry.json`, and `profiles.json` as pretty-printed, deterministically-sorted JSON. It only touches these bookkeeping files — never the user-owned config files dfm backs up.
 - `dotfiles-manager` is now usable as a library: operations live in `dotfiles_manager::backup`, `dotfiles_manager::restore`, `dotfiles_manager::sync`, `dotfiles_manager::git`, `dotfiles_manager::doctor`, `dotfiles_manager::profiles`, `dotfiles_manager::keyring`, `dotfiles_manager::encryption`, and `dotfiles_manager::registry`, take a `Dfm` context (custom root supported via `Dfm::with_root`), and return report structs instead of printing. The CLI ships two binaries, `dotfiles-manager` and the shorter alias `dfm`, behind the default `cli` feature; depend on the library with `default-features = false`.
 - `dfm link <repo>` clones a dotfiles repo (URL or `owner/repo`) into `~/.dfm` and restores it in one step — the command to run when setting up a new machine.
+
+### Fixed
+- `dfm doctor`'s backup consistency check now compares directory config entries file-by-file, recursively, instead of skipping them entirely. Previously a config entry whose `target_path` was a directory was silently excluded from the (unencrypted) consistency check; now every file under it is compared against the backup, and files present on only one side are flagged.
+- `dfm doctor`'s encrypted backup consistency check now detects an incorrect password precisely, by matching on `age`'s decryption error variant instead of substring-matching the (locale-dependent) error message. Previously a non-English locale, or any decrypt failure whose message happened to contain "decrypt", could misclassify — or fail to classify — a wrong-password error.
+- Directory backup/restore no longer fails when converting a self-referencing symlink (one pointing back at its own backup destination) back into a real directory. It previously called `remove_dir` on the symlink itself, which always fails with `ENOTDIR` since removing a symlink is always an unlink, never an `rmdir` — regardless of what it points to.
+
+### Removed
+- `dfm doctor` no longer runs a "Layer Resolution" check. A config entry existing in both the `common` and active-profile layers is expected — it's how per-profile overrides work, and the higher-priority layer winning was never actually a problem to report. It was previously surfaced as an informational finding; that noise is gone.
 
 ### Changed
 - Directory sync (`dfm backup`, `dfm restore`) no longer shells out to `rsync`. Mirroring is now done natively in Rust, so `rsync` is no longer a required dependency on any platform.
