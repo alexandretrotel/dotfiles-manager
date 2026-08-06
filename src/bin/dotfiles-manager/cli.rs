@@ -13,9 +13,7 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Command {
-    #[command(
-        about = "Clone a dotfiles repo into ~/.dfm and restore it (onboard a new machine)"
-    )]
+    #[command(about = "Clone a dotfiles repo into ~/.dfm and restore it (onboard a new machine)")]
     Link(LinkArgs),
 
     #[command(about = "Backup system configurations and user data to a safe location")]

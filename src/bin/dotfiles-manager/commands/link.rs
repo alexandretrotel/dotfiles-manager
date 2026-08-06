@@ -15,7 +15,11 @@ pub fn run(ctx: &Dfm, args: LinkArgs) -> Result<()> {
     let link_report = dotfiles_manager::link::run(ctx, &args.repo)
         .map_err(with_suggestions)
         .wrap_err("Link failed")?;
-    println!("   Cloned {} into {}", link_report.url, ctx.root().display());
+    println!(
+        "   Cloned {} into {}",
+        link_report.url,
+        ctx.root().display()
+    );
 
     let profile = ActiveProfile::resolve(ctx, None);
     let password =

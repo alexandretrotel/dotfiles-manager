@@ -53,11 +53,7 @@ impl ActiveProfile {
     }
 
     /// First existing encrypted backup of `source_path`, profile layer first.
-    pub fn resolve_encrypted_source(
-        &self,
-        ctx: &Dfm,
-        source_path: &str,
-    ) -> Option<ResolvedSource> {
+    pub fn resolve_encrypted_source(&self, ctx: &Dfm, source_path: &str) -> Option<ResolvedSource> {
         Self::first_existing(self.get_candidate_encrypted_sources(ctx, source_path))
     }
 

@@ -22,9 +22,7 @@ pub(crate) fn with_suggestions(e: Error) -> color_eyre::eyre::Report {
                 .suggestion(create)
                 .suggestion("List available profiles with: dfm profile list")
         }
-        Error::NoGitRepository { .. } => {
-            eyre!(e).suggestion("Run 'dfm backup' to initialize it.")
-        }
+        Error::NoGitRepository { .. } => eyre!(e).suggestion("Run 'dfm backup' to initialize it."),
         Error::DataDirAlreadyExists { path } => {
             let suggestion = format!("Move or remove {} first, then retry.", path.display());
             eyre!(e).suggestion(suggestion)
