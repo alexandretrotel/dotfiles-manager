@@ -32,7 +32,7 @@ pub enum Error {
     DataDirAlreadyExists { path: PathBuf },
 
     #[error("'{0}' is not a valid GitHub repo; use a URL or `owner/repo`")]
-    InvalidRepoSpec(String),
+    InvalidRepo(String),
 
     #[error("profile '{0}' does not exist")]
     ProfileNotFound(String),
@@ -165,7 +165,7 @@ mod tests {
     #[test]
     fn invalid_repo_spec_displays_the_offending_spec() {
         assert_eq!(
-            Error::InvalidRepoSpec("nope".to_string()).to_string(),
+            Error::InvalidRepo("nope".to_string()).to_string(),
             "'nope' is not a valid GitHub repo; use a URL or `owner/repo`"
         );
     }

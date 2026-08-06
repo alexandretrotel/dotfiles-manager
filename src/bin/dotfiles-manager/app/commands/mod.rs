@@ -3,6 +3,7 @@ pub mod doctor;
 pub mod git;
 pub mod link;
 pub mod profile;
+pub mod prune;
 pub mod restore;
 pub mod secret;
 pub mod sync;
@@ -27,7 +28,7 @@ pub(crate) fn with_suggestions(e: Error) -> color_eyre::eyre::Report {
             let suggestion = format!("Move or remove {} first, then retry.", path.display());
             eyre!(e).suggestion(suggestion)
         }
-        Error::InvalidRepoSpec(_) => {
+        Error::InvalidRepo(_) => {
             eyre!(e).suggestion("Use a URL (https://github.com/owner/repo) or `owner/repo`.")
         }
         _ => eyre!(e),

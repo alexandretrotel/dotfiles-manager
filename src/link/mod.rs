@@ -47,7 +47,7 @@ fn resolve_clone_url(repo: &str) -> Result<String> {
         Some((owner, repo_name)) if !owner.is_empty() && !repo_name.is_empty() => {
             Ok(format!("https://github.com/{owner}/{repo_name}.git"))
         }
-        _ => Err(Error::InvalidRepoSpec(repo.to_string())),
+        _ => Err(Error::InvalidRepo(repo.to_string())),
     }
 }
 

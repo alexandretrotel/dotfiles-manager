@@ -18,7 +18,7 @@ use crate::error::Result;
 /// Implemented by registry entry types so [`Registry`] can filter on the
 /// shared `enabled` flag.
 pub trait RegistryEntryLike {
-    /// Whether this entry should be processed during backup/restore/validate.
+    /// Whether this entry should be processed during backup/restore.
     fn is_enabled(&self) -> bool;
 }
 
