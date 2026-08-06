@@ -35,7 +35,7 @@ impl ActiveProfile {
 
     /// Where `backup_path` could live, profile layer first (whether or not
     /// each candidate actually exists on disk).
-    pub fn get_candidate_backup_paths(
+    fn get_candidate_backup_paths(
         &self,
         ctx: &Dfm,
         backup_path: &str,
@@ -43,28 +43,14 @@ impl ActiveProfile {
         self.candidate_paths(ctx, backup_path, Dfm::profile_dir, Dfm::common_dir)
     }
 
-    /// Every existing backup of `backup_path`, across all layers.
-    pub fn get_all_resolved_backups(&self, ctx: &Dfm, backup_path: &str) -> Vec<ResolvedBackup> {
-        Self::all_existing(self.get_candidate_backup_paths(ctx, backup_path))
-    }
-
     /// First existing encrypted bundle, profile layer first.
     pub fn resolve_encrypted_bundle(&self, ctx: &Dfm) -> Option<ResolvedBackup> {
-        self.resolve_encrypted_backup_path(ctx, ENCRYPTED_BUNDLE_FILE)
-    }
-
-    /// First existing encrypted backup of `backup_path`, profile layer first.
-    pub fn resolve_encrypted_backup_path(
-        &self,
-        ctx: &Dfm,
-        backup_path: &str,
-    ) -> Option<ResolvedBackup> {
-        Self::first_existing(self.get_candidate_encrypted_backup_paths(ctx, backup_path))
+        Self::first_existing(self.get_candidate_encrypted_backup_paths(ctx, ENCRYPTED_BUNDLE_FILE))
     }
 
     /// Where the encrypted backup of `backup_path` could live, profile layer
     /// first (whether or not each candidate actually exists on disk).
-    pub fn get_candidate_encrypted_backup_paths(
+    fn get_candidate_encrypted_backup_paths(
         &self,
         ctx: &Dfm,
         backup_path: &str,
@@ -109,15 +95,6 @@ impl ActiveProfile {
             .into_iter()
             .find(|(path, _)| path.exists())
             .map(|(path, layer)| ResolvedBackup { path, layer })
-    }
-
-    /// All candidates that exist on disk.
-    fn all_existing(candidates: Vec<(PathBuf, BackupLayer)>) -> Vec<ResolvedBackup> {
-        candidates
-            .into_iter()
-            .filter(|(path, _)| path.exists())
-            .map(|(path, layer)| ResolvedBackup { path, layer })
-            .collect()
     }
 }
 
@@ -248,32 +225,6 @@ mod tests {
     }
 
     #[test]
-    fn get_all_resolved_backups_returns_every_existing_layer() {
-        let (_dir, ctx) = dfm();
-        let profile = ActiveProfile::with_profile("work");
-
-        write_file(ctx.common_dir().join(".zshrc"), "common");
-        write_file(ctx.profile_dir("work").join(".zshrc"), "profile");
-
-        let resolved = profile.get_all_resolved_backups(&ctx, ".zshrc");
-        assert_eq!(resolved.len(), 2);
-        assert_eq!(resolved[0].layer, BackupLayer::Profile);
-        assert_eq!(resolved[1].layer, BackupLayer::Common);
-    }
-
-    #[test]
-    fn get_all_resolved_backups_skips_missing_layers() {
-        let (_dir, ctx) = dfm();
-        let profile = ActiveProfile::with_profile("work");
-
-        write_file(ctx.common_dir().join(".zshrc"), "common");
-
-        let resolved = profile.get_all_resolved_backups(&ctx, ".zshrc");
-        assert_eq!(resolved.len(), 1);
-        assert_eq!(resolved[0].layer, BackupLayer::Common);
-    }
-
-    #[test]
     fn resolve_encrypted_bundle_finds_bundle_in_profile_layer() {
         let (_dir, ctx) = dfm();
         let profile = ActiveProfile::with_profile("work");
@@ -290,34 +241,6 @@ mod tests {
             resolved.path,
             ctx.encrypted_profile_dir("work")
                 .join(ENCRYPTED_BUNDLE_FILE)
-        );
-    }
-
-    #[test]
-    fn resolve_encrypted_backup_path_prefers_profile_layer_over_common() {
-        let (_dir, ctx) = dfm();
-        let profile = ActiveProfile::with_profile("work");
-
-        write_file(ctx.encrypted_common_dir().join("secret.age"), "common");
-        write_file(
-            ctx.encrypted_profile_dir("work").join("secret.age"),
-            "profile",
-        );
-
-        let resolved = profile
-            .resolve_encrypted_backup_path(&ctx, "secret.age")
-            .unwrap();
-        assert_eq!(resolved.layer, BackupLayer::Profile);
-    }
-
-    #[test]
-    fn resolve_encrypted_backup_path_returns_none_when_missing() {
-        let (_dir, ctx) = dfm();
-        let profile = ActiveProfile::common_only();
-        assert!(
-            profile
-                .resolve_encrypted_backup_path(&ctx, "secret.age")
-                .is_none()
         );
     }
 }
