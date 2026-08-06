@@ -226,4 +226,16 @@ mod tests {
 
         assert!(has_staged_changes(dir.path()).unwrap());
     }
+
+    #[test]
+    fn has_staged_changes_errs_with_status_when_git_exits_non_0_or_1() {
+        // Not a git repository, so `git diff --cached --quiet` fails to
+        // even parse its arguments in that context and exits with a status
+        // other than 0 or 1, exercising the `Some(code)` catch-all branch.
+        let dir = tempfile::tempdir().unwrap();
+
+        let err = has_staged_changes(dir.path()).unwrap_err();
+
+        assert!(err.to_string().contains("exited with status"));
+    }
 }
