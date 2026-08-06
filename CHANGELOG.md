@@ -7,6 +7,9 @@ All notable changes to this project are documented in this file.
 ### Added
 - **`dfm prune`** deletes backup directories left behind by profiles that no longer exist (e.g. a profile removed with `dfm profile delete`, which intentionally keeps its backup directory on disk). It lists the orphaned directories it finds and asks for confirmation — defaulting to "no" — before deleting anything.
 
+### Changed
+- `dfm backup` no longer rewrites the encrypted bundle (`dfm-encrypted-bundle.age`) when its contents haven't actually changed. `age` encryption uses a fresh salt/nonce every run, so previously the ciphertext changed on every backup regardless of whether the underlying dotfiles did, and `dfm sync` committed a near-full copy of the bundle every time — bloating the dfm repo on a long run of backup-only syncs. A small plaintext hash file (`dfm-encrypted-bundle.sha256`) is now kept alongside the bundle to detect when the archived content is unchanged; when it is, the bundle is left untouched and `dfm sync` has nothing to commit for it. Real content changes still produce a normal commit, exactly as before.
+
 ## v1.0.0
 
 > **Note:** Versioning restarts at 1.0.0 following the rename from `mntn` to `dotfiles-manager`. This is not a downgrade — it is a fresh start for the `dotfiles-manager` crate name. The previous `mntn` history (up through v5.0.0) is preserved below for reference.
