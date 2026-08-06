@@ -316,3 +316,606 @@ fn check_dir_entry(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use crate::context::{Dfm, ENCRYPTED_BUNDLE_FILE};
+    use crate::encryption::{encrypt_file, write_entries_tar};
+    use crate::registry::EncryptedRegistry;
+
+    use super::*;
+
+    fn empty_config_registry(ctx: &Dfm) {
+        let registry = ConfigRegistry {
+            version: "1.0.0".to_string(),
+            entries: HashMap::new(),
+        };
+        registry.save(&ctx.config_registry_path()).unwrap();
+    }
+
+    fn write_config_entry(ctx: &Dfm, id: &str, source_path: &str, target_path: &Path) {
+        let mut entries = HashMap::new();
+        entries.insert(
+            id.to_string(),
+            ConfigRegistryEntry {
+                name: "Test Config".to_string(),
+                description: None,
+                enabled: true,
+                source_path: source_path.to_string(),
+                target_path: target_path.to_path_buf(),
+            },
+        );
+        let registry = ConfigRegistry {
+            version: "1.0.0".to_string(),
+            entries,
+        };
+        registry.save(&ctx.config_registry_path()).unwrap();
+    }
+
+    #[test]
+    fn name_is_backup_consistency_check() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None);
+        assert_eq!(validator.name(), "Backup Consistency Check");
+    }
+
+    #[test]
+    fn plain_file_in_sync_produces_no_warnings() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+
+        let target_path = dir.path().join("home/.bashrc");
+        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
+        fs::write(&target_path, b"export PATH=$PATH").unwrap();
+
+        let backup_path = ctx.common_dir().join(".bashrc");
+        fs::create_dir_all(backup_path.parent().unwrap()).unwrap();
+        fs::write(&backup_path, b"export PATH=$PATH").unwrap();
+
+        write_config_entry(&ctx, "bashrc", ".bashrc", &target_path);
+
+        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None);
+        let errors = validator.validate();
+
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn plain_file_differs_produces_warning() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+
+        let target_path = dir.path().join("home/.bashrc");
+        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
+        fs::write(&target_path, b"current content").unwrap();
+
+        let backup_path = ctx.common_dir().join(".bashrc");
+        fs::create_dir_all(backup_path.parent().unwrap()).unwrap();
+        fs::write(&backup_path, b"stale backup content").unwrap();
+
+        write_config_entry(&ctx, "bashrc", ".bashrc", &target_path);
+
+        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None);
+        let errors = validator.validate();
+
+        assert_eq!(errors.len(), 1);
+        assert_eq!(
+            errors[0].message,
+            "Test Config (bashrc): File differs from backup"
+        );
+        assert!(errors[0].fix_suggestion.is_some());
+    }
+
+    #[test]
+    fn missing_target_path_is_skipped() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+
+        let target_path = dir.path().join("home/.bashrc");
+
+        let backup_path = ctx.common_dir().join(".bashrc");
+        fs::create_dir_all(backup_path.parent().unwrap()).unwrap();
+        fs::write(&backup_path, b"backup content").unwrap();
+
+        write_config_entry(&ctx, "bashrc", ".bashrc", &target_path);
+
+        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None);
+        let errors = validator.validate();
+
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn dir_entry_in_sync_produces_no_warnings() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+
+        let target_dir = dir.path().join("home/.config/nvim");
+        fs::create_dir_all(&target_dir).unwrap();
+        fs::write(target_dir.join("init.lua"), b"vim.opt.number = true").unwrap();
+
+        let backup_dir = ctx.common_dir().join("nvim");
+        fs::create_dir_all(&backup_dir).unwrap();
+        fs::write(backup_dir.join("init.lua"), b"vim.opt.number = true").unwrap();
+
+        write_config_entry(&ctx, "nvim", "nvim", &target_dir);
+
+        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None);
+        let errors = validator.validate();
+
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn dir_entry_modified_file_produces_warning() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+
+        let target_dir = dir.path().join("home/.config/nvim");
+        fs::create_dir_all(&target_dir).unwrap();
+        fs::write(target_dir.join("init.lua"), b"current lua content").unwrap();
+
+        let backup_dir = ctx.common_dir().join("nvim");
+        fs::create_dir_all(&backup_dir).unwrap();
+        fs::write(backup_dir.join("init.lua"), b"stale lua content").unwrap();
+
+        write_config_entry(&ctx, "nvim", "nvim", &target_dir);
+
+        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None);
+        let errors = validator.validate();
+
+        assert_eq!(errors.len(), 1);
+        assert_eq!(
+            errors[0].message,
+            "Test Config (nvim): File differs from backup"
+        );
+    }
+
+    #[test]
+    fn dir_entry_file_missing_from_backup_produces_warning() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+
+        let target_dir = dir.path().join("home/.config/nvim");
+        fs::create_dir_all(&target_dir).unwrap();
+        fs::write(target_dir.join("init.lua"), b"content").unwrap();
+        fs::write(target_dir.join("extra.lua"), b"only on disk").unwrap();
+
+        let backup_dir = ctx.common_dir().join("nvim");
+        fs::create_dir_all(&backup_dir).unwrap();
+        fs::write(backup_dir.join("init.lua"), b"content").unwrap();
+
+        write_config_entry(&ctx, "nvim", "nvim", &target_dir);
+
+        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None);
+        let errors = validator.validate();
+
+        assert_eq!(errors.len(), 1);
+        assert_eq!(
+            errors[0].message,
+            "Test Config (nvim): nvim/extra.lua missing from backup"
+        );
+    }
+
+    #[test]
+    fn dir_entry_file_missing_on_disk_produces_warning() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+
+        let target_dir = dir.path().join("home/.config/nvim");
+        fs::create_dir_all(&target_dir).unwrap();
+        fs::write(target_dir.join("init.lua"), b"content").unwrap();
+
+        let backup_dir = ctx.common_dir().join("nvim");
+        fs::create_dir_all(&backup_dir).unwrap();
+        fs::write(backup_dir.join("init.lua"), b"content").unwrap();
+        fs::write(backup_dir.join("old.lua"), b"only in backup").unwrap();
+
+        write_config_entry(&ctx, "nvim", "nvim", &target_dir);
+
+        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None);
+        let errors = validator.validate();
+
+        assert_eq!(errors.len(), 1);
+        assert_eq!(
+            errors[0].message,
+            "Test Config (nvim): nvim/old.lua present in backup but missing on disk"
+        );
+    }
+
+    #[test]
+    fn no_password_skips_encrypted_check_entirely() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        empty_config_registry(&ctx);
+
+        let target_path = dir.path().join("home/.ssh/config");
+        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
+        fs::write(&target_path, b"ssh config content").unwrap();
+
+        let mut entries = HashMap::new();
+        entries.insert(
+            "ssh_config".to_string(),
+            EncryptedRegistryEntry {
+                name: "SSH Config".to_string(),
+                description: None,
+                enabled: true,
+                source_path: "ssh/config".to_string(),
+                target_path: target_path.clone(),
+            },
+        );
+        let encrypted_registry = EncryptedRegistry {
+            version: "1.0.0".to_string(),
+            entries,
+        };
+        encrypted_registry
+            .save(&ctx.encrypted_registry_path())
+            .unwrap();
+
+        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None);
+        let errors = validator.validate();
+
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn encrypted_bundle_wrong_password_reports_typed_incorrect_password_warning() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        empty_config_registry(&ctx);
+
+        let target_path = dir.path().join("home/.ssh/config");
+        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
+        fs::write(&target_path, b"ssh config content").unwrap();
+
+        let mut entries = HashMap::new();
+        entries.insert(
+            "ssh_config".to_string(),
+            EncryptedRegistryEntry {
+                name: "SSH Config".to_string(),
+                description: None,
+                enabled: true,
+                source_path: "ssh/config".to_string(),
+                target_path: target_path.clone(),
+            },
+        );
+        let encrypted_registry = EncryptedRegistry {
+            version: "1.0.0".to_string(),
+            entries,
+        };
+        encrypted_registry
+            .save(&ctx.encrypted_registry_path())
+            .unwrap();
+
+        let tar_path = dir.path().join("bundle.tar");
+        write_entries_tar(&tar_path, &[("ssh/config", &target_path)]).unwrap();
+
+        let bundle_path = ctx.encrypted_common_dir().join(ENCRYPTED_BUNDLE_FILE);
+        let correct_password = SecretString::from("correct horse battery staple".to_string());
+        encrypt_file(&tar_path, &bundle_path, &correct_password).unwrap();
+
+        let wrong_password = SecretString::from("totally wrong password".to_string());
+        let validator = BackupConsistencyValidator::new(
+            ctx,
+            ActiveProfile::common_only(),
+            Some(wrong_password),
+        );
+        let errors = validator.validate();
+
+        assert_eq!(errors.len(), 1);
+        assert_eq!(
+            errors[0].message,
+            "Skipping encrypted file validation: Incorrect password"
+        );
+    }
+
+    fn write_encrypted_entry(
+        ctx: &Dfm,
+        id: &str,
+        source_path: &str,
+        target_path: &Path,
+    ) -> EncryptedRegistryEntry {
+        let entry = EncryptedRegistryEntry {
+            name: "Test Encrypted".to_string(),
+            description: None,
+            enabled: true,
+            source_path: source_path.to_string(),
+            target_path: target_path.to_path_buf(),
+        };
+        let mut entries = HashMap::new();
+        entries.insert(id.to_string(), entry.clone());
+        let registry = EncryptedRegistry {
+            version: "1.0.0".to_string(),
+            entries,
+        };
+        registry.save(&ctx.encrypted_registry_path()).unwrap();
+        entry
+    }
+
+    /// Build and encrypt a bundle from `(archive name, source file)` pairs
+    /// via the same tar+encrypt helpers the real backup path uses.
+    fn write_encrypted_bundle(
+        ctx: &Dfm,
+        profile: &ActiveProfile,
+        entries: &[(&str, &Path)],
+        password: &SecretString,
+    ) {
+        let tar_temp = create_temp_file("test-bundle-build").unwrap();
+        write_entries_tar(tar_temp.path(), entries).unwrap();
+        let bundle_dir = profile.encrypted_backup_path(ctx);
+        fs::create_dir_all(&bundle_dir).unwrap();
+        encrypt_file(
+            tar_temp.path(),
+            &bundle_dir.join(ENCRYPTED_BUNDLE_FILE),
+            password,
+        )
+        .unwrap();
+    }
+
+    #[test]
+    fn encrypted_dir_entry_in_sync_produces_no_warnings() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        empty_config_registry(&ctx);
+        let profile = ActiveProfile::common_only();
+
+        let target_dir = dir.path().join("home/.ssh/keys");
+        fs::create_dir_all(&target_dir).unwrap();
+        fs::write(target_dir.join("id_rsa"), b"private key content").unwrap();
+
+        write_encrypted_entry(&ctx, "ssh_keys", "ssh/keys", &target_dir);
+
+        let password = SecretString::from("pw".to_string());
+        write_encrypted_bundle(
+            &ctx,
+            &profile,
+            &[("ssh/keys/id_rsa", target_dir.join("id_rsa").as_path())],
+            &password,
+        );
+
+        let validator = BackupConsistencyValidator::new(ctx, profile, Some(password));
+        let errors = validator.validate();
+
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn encrypted_dir_entry_modified_file_produces_warning() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        empty_config_registry(&ctx);
+        let profile = ActiveProfile::common_only();
+
+        let target_dir = dir.path().join("home/.ssh/keys");
+        fs::create_dir_all(&target_dir).unwrap();
+        fs::write(target_dir.join("id_rsa"), b"current key content").unwrap();
+
+        write_encrypted_entry(&ctx, "ssh_keys", "ssh/keys", &target_dir);
+
+        // Build the bundle from a different source file so the archived
+        // content differs from what's currently on disk.
+        let stale_source = dir.path().join("stale_id_rsa");
+        fs::write(&stale_source, b"stale key content").unwrap();
+
+        let password = SecretString::from("pw".to_string());
+        write_encrypted_bundle(
+            &ctx,
+            &profile,
+            &[("ssh/keys/id_rsa", stale_source.as_path())],
+            &password,
+        );
+
+        let validator = BackupConsistencyValidator::new(ctx, profile, Some(password));
+        let errors = validator.validate();
+
+        assert_eq!(errors.len(), 1);
+        assert_eq!(
+            errors[0].message,
+            "Test Encrypted (ssh_keys): Encrypted file differs from backup"
+        );
+    }
+
+    #[test]
+    fn encrypted_dir_entry_file_missing_from_bundle_produces_warning() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        empty_config_registry(&ctx);
+        let profile = ActiveProfile::common_only();
+
+        let target_dir = dir.path().join("home/.ssh/keys");
+        fs::create_dir_all(&target_dir).unwrap();
+        fs::write(target_dir.join("id_rsa"), b"key content").unwrap();
+        fs::write(target_dir.join("id_rsa.pub"), b"only on disk").unwrap();
+
+        write_encrypted_entry(&ctx, "ssh_keys", "ssh/keys", &target_dir);
+
+        let password = SecretString::from("pw".to_string());
+        write_encrypted_bundle(
+            &ctx,
+            &profile,
+            &[("ssh/keys/id_rsa", target_dir.join("id_rsa").as_path())],
+            &password,
+        );
+
+        let validator = BackupConsistencyValidator::new(ctx, profile, Some(password));
+        let errors = validator.validate();
+
+        assert_eq!(errors.len(), 1);
+        assert_eq!(
+            errors[0].message,
+            "Test Encrypted (ssh_keys): ssh/keys/id_rsa.pub missing from encrypted bundle backup"
+        );
+    }
+
+    #[test]
+    fn encrypted_dir_entry_file_missing_on_disk_produces_warning() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        empty_config_registry(&ctx);
+        let profile = ActiveProfile::common_only();
+
+        let target_dir = dir.path().join("home/.ssh/keys");
+        fs::create_dir_all(&target_dir).unwrap();
+        fs::write(target_dir.join("id_rsa"), b"key content").unwrap();
+
+        write_encrypted_entry(&ctx, "ssh_keys", "ssh/keys", &target_dir);
+
+        // The bundle has an extra member under the same prefix that isn't
+        // present on disk.
+        let extra_source = dir.path().join("id_rsa.pub");
+        fs::write(&extra_source, b"only in backup").unwrap();
+
+        let password = SecretString::from("pw".to_string());
+        write_encrypted_bundle(
+            &ctx,
+            &profile,
+            &[
+                ("ssh/keys/id_rsa", target_dir.join("id_rsa").as_path()),
+                ("ssh/keys/id_rsa.pub", extra_source.as_path()),
+            ],
+            &password,
+        );
+
+        let validator = BackupConsistencyValidator::new(ctx, profile, Some(password));
+        let errors = validator.validate();
+
+        assert_eq!(errors.len(), 1);
+        assert_eq!(
+            errors[0].message,
+            "Test Encrypted (ssh_keys): ssh/keys/id_rsa.pub present in encrypted bundle backup but missing on disk"
+        );
+    }
+
+    #[test]
+    fn encrypted_bundle_generic_decrypt_failure_reports_generic_warning() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        empty_config_registry(&ctx);
+        let profile = ActiveProfile::common_only();
+
+        let target_path = dir.path().join("home/.ssh/config");
+        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
+        fs::write(&target_path, b"ssh config content").unwrap();
+
+        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &target_path);
+
+        // Not valid age ciphertext at all, so decryption fails for a reason
+        // other than an incorrect password.
+        let bundle_dir = profile.encrypted_backup_path(&ctx);
+        fs::create_dir_all(&bundle_dir).unwrap();
+        fs::write(
+            bundle_dir.join(ENCRYPTED_BUNDLE_FILE),
+            b"not age ciphertext, just garbage bytes",
+        )
+        .unwrap();
+
+        let password = SecretString::from("any password".to_string());
+        let validator = BackupConsistencyValidator::new(ctx, profile, Some(password));
+        let errors = validator.validate();
+
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].message.starts_with("Could not decrypt bundle:"));
+    }
+
+    #[test]
+    fn encrypted_bundle_unreadable_tar_reports_could_not_read_warning() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        empty_config_registry(&ctx);
+        let profile = ActiveProfile::common_only();
+
+        let target_path = dir.path().join("home/.ssh/config");
+        fs::create_dir_all(target_path.parent().unwrap()).unwrap();
+        fs::write(&target_path, b"ssh config content").unwrap();
+
+        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &target_path);
+
+        // The bundle decrypts fine, but the decrypted payload isn't a valid
+        // tar archive.
+        let not_a_tar = dir.path().join("not-a-tar");
+        fs::write(&not_a_tar, b"not a tar file at all, just garbage bytes").unwrap();
+
+        let password = SecretString::from("pw".to_string());
+        let bundle_dir = profile.encrypted_backup_path(&ctx);
+        fs::create_dir_all(&bundle_dir).unwrap();
+        encrypt_file(
+            &not_a_tar,
+            &bundle_dir.join(ENCRYPTED_BUNDLE_FILE),
+            &password,
+        )
+        .unwrap();
+
+        let validator = BackupConsistencyValidator::new(ctx, profile, Some(password));
+        let errors = validator.validate();
+
+        assert_eq!(errors.len(), 1);
+        assert!(
+            errors[0]
+                .message
+                .starts_with("Could not read encrypted bundle:")
+        );
+    }
+
+    #[test]
+    fn invalid_config_registry_json_reports_error_and_returns_early() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+
+        fs::create_dir_all(ctx.config_registry_path().parent().unwrap()).unwrap();
+        fs::write(ctx.config_registry_path(), b"not valid json").unwrap();
+
+        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None);
+        let errors = validator.validate();
+
+        assert_eq!(errors.len(), 1);
+        assert!(
+            errors[0]
+                .message
+                .starts_with("Could not load config registry:")
+        );
+    }
+
+    #[test]
+    fn invalid_encrypted_registry_json_reports_error_when_password_given() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        empty_config_registry(&ctx);
+
+        fs::create_dir_all(ctx.encrypted_registry_path().parent().unwrap()).unwrap();
+        fs::write(ctx.encrypted_registry_path(), b"not valid json").unwrap();
+
+        let password = SecretString::from("pw".to_string());
+        let validator =
+            BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), Some(password));
+        let errors = validator.validate();
+
+        assert_eq!(errors.len(), 1);
+        assert!(
+            errors[0]
+                .message
+                .starts_with("Could not load encrypted config registry:")
+        );
+    }
+
+    #[test]
+    fn no_encrypted_candidates_returns_no_warnings() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path());
+        empty_config_registry(&ctx);
+
+        // An enabled encrypted entry whose target doesn't exist on disk is
+        // filtered out, leaving no candidates to validate.
+        let target_path = dir.path().join("home/.ssh/config");
+        write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &target_path);
+
+        let password = SecretString::from("pw".to_string());
+        let validator =
+            BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), Some(password));
+        let errors = validator.validate();
+
+        assert!(errors.is_empty());
+    }
+}
