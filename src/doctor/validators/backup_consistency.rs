@@ -475,7 +475,8 @@ mod tests {
     fn name_is_backup_consistency_check() {
         let dir = tempfile::tempdir().unwrap();
         let ctx = Dfm::with_root(dir.path());
-        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
+        let validator =
+            BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
         assert_eq!(validator.name(), "Backup Consistency Check");
     }
 
@@ -494,7 +495,8 @@ mod tests {
 
         write_config_entry(&ctx, "bashrc", ".bashrc", &target_path);
 
-        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
+        let validator =
+            BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
         let errors = validator.validate();
 
         assert!(errors.is_empty());
@@ -515,7 +517,8 @@ mod tests {
 
         write_config_entry(&ctx, "bashrc", ".bashrc", &target_path);
 
-        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
+        let validator =
+            BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
         let errors = validator.validate();
 
         assert_eq!(errors.len(), 1);
@@ -539,7 +542,8 @@ mod tests {
 
         write_config_entry(&ctx, "bashrc", ".bashrc", &target_path);
 
-        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
+        let validator =
+            BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
         let errors = validator.validate();
 
         assert!(errors.is_empty());
@@ -560,7 +564,8 @@ mod tests {
 
         write_config_entry_with_enabled(&ctx, "bashrc", ".bashrc", &target_path, false);
 
-        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
+        let validator =
+            BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
         let errors = validator.validate();
 
         assert!(errors.is_empty());
@@ -581,7 +586,8 @@ mod tests {
 
         write_config_entry_with_enabled(&ctx, "bashrc", ".bashrc", &target_path, false);
 
-        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, true);
+        let validator =
+            BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, true);
         let errors = validator.validate();
 
         assert_eq!(errors.len(), 1);
@@ -606,7 +612,8 @@ mod tests {
 
         write_config_entry(&ctx, "nvim", "nvim", &target_dir);
 
-        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
+        let validator =
+            BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
         let errors = validator.validate();
 
         assert!(errors.is_empty());
@@ -627,7 +634,8 @@ mod tests {
 
         write_config_entry(&ctx, "nvim", "nvim", &target_dir);
 
-        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
+        let validator =
+            BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
         let errors = validator.validate();
 
         assert_eq!(errors.len(), 1);
@@ -653,7 +661,8 @@ mod tests {
 
         write_config_entry(&ctx, "nvim", "nvim", &target_dir);
 
-        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
+        let validator =
+            BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
         let errors = validator.validate();
 
         assert_eq!(errors.len(), 1);
@@ -679,7 +688,8 @@ mod tests {
 
         write_config_entry(&ctx, "nvim", "nvim", &target_dir);
 
-        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
+        let validator =
+            BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
         let errors = validator.validate();
 
         assert_eq!(errors.len(), 1);
@@ -718,7 +728,8 @@ mod tests {
             .save(&ctx.encrypted_registry_path())
             .unwrap();
 
-        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
+        let validator =
+            BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
         let errors = validator.validate();
 
         assert!(errors.is_empty());
@@ -1031,7 +1042,8 @@ mod tests {
         fs::create_dir_all(ctx.config_registry_path().parent().unwrap()).unwrap();
         fs::write(ctx.config_registry_path(), b"not valid json").unwrap();
 
-        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
+        let validator =
+            BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
         let errors = validator.validate();
 
         assert_eq!(errors.len(), 1);
@@ -1052,8 +1064,12 @@ mod tests {
         fs::write(ctx.encrypted_registry_path(), b"not valid json").unwrap();
 
         let password = SecretString::from("pw".to_string());
-        let validator =
-            BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), Some(password), false);
+        let validator = BackupConsistencyValidator::new(
+            ctx,
+            ActiveProfile::common_only(),
+            Some(password),
+            false,
+        );
         let errors = validator.validate();
 
         assert_eq!(errors.len(), 1);
@@ -1076,8 +1092,12 @@ mod tests {
         write_encrypted_entry(&ctx, "ssh_config", "ssh/config", &target_path);
 
         let password = SecretString::from("pw".to_string());
-        let validator =
-            BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), Some(password), false);
+        let validator = BackupConsistencyValidator::new(
+            ctx,
+            ActiveProfile::common_only(),
+            Some(password),
+            false,
+        );
         let errors = validator.validate();
 
         assert!(errors.is_empty());
@@ -1097,7 +1117,8 @@ mod tests {
 
         write_config_entry(&ctx, "bashrc", ".bashrc", &target_path);
 
-        let validator = BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
+        let validator =
+            BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), None, false);
         let errors = validator.validate();
 
         assert!(errors.is_empty());
@@ -1117,8 +1138,12 @@ mod tests {
         // No bundle file is ever written, so resolve_encrypted_bundle finds
         // nothing even though there's a candidate to validate.
         let password = SecretString::from("pw".to_string());
-        let validator =
-            BackupConsistencyValidator::new(ctx, ActiveProfile::common_only(), Some(password), false);
+        let validator = BackupConsistencyValidator::new(
+            ctx,
+            ActiveProfile::common_only(),
+            Some(password),
+            false,
+        );
         let errors = validator.validate();
 
         assert_eq!(errors.len(), 1);
