@@ -11,6 +11,62 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 - `dfm backup` no longer rewrites the encrypted bundle (`dfm-encrypted-bundle.age`) when its contents haven't actually changed. `age` encryption uses a fresh salt/nonce every run, so previously the ciphertext changed on every backup regardless of whether the underlying dotfiles did, and `dfm sync` committed a near-full copy of the bundle every time — bloating the dfm repo on a long run of backup-only syncs. A small plaintext hash file (`dfm-encrypted-bundle.sha256`) is now kept alongside the bundle to detect when the archived content is unchanged; when it is, the bundle is left untouched and `dfm sync` has nothing to commit for it. Real content changes still produce a normal commit, exactly as before.
+- **Breaking:** registry entry fields renamed for clarity — `source_path` is now `backup_path` (the relative path inside a backup layer) and `target_path` is now `original_path` (the absolute real-machine path). This changes the JSON keys in `config.registry.json` and `encrypted.registry.json`. Run the migration script below against your `~/.dfm` (or a custom root) before using this version:
+
+  ```bash
+  #!/usr/bin/env bash
+  # Renames, per entry, in config.registry.json and encrypted.registry.json:
+  #   source_path -> backup_path
+  #   target_path -> original_path
+  #
+  # Usage: ./migrate-dfm-registry-paths.sh [dfm-root]   (defaults to ~/.dfm)
+  # Each touched file is backed up as <file>.bak.<timestamp> first.
+  # Safe to re-run: files with no old keys left are skipped untouched.
+
+  set -euo pipefail
+
+  if ! command -v jq >/dev/null 2>&1; then
+      echo "error: jq is required (brew install jq)" >&2
+      exit 1
+  fi
+
+  DFM_ROOT="${1:-$HOME/.dfm}"
+
+  if [ ! -d "$DFM_ROOT" ]; then
+      echo "error: dfm root not found: $DFM_ROOT" >&2
+      exit 1
+  fi
+
+  migrate_file() {
+      local path="$1"
+
+      if [ ! -f "$path" ]; then
+          echo "skip (not found): $path"
+          return
+      fi
+
+      if ! grep -q '"source_path"\|"target_path"' "$path"; then
+          echo "skip (already migrated): $path"
+          return
+      fi
+
+      local backup="${path}.bak.$(date +%Y%m%d%H%M%S)"
+      cp "$path" "$backup"
+
+      local tmp
+      tmp="$(mktemp)"
+      jq '.entries |= with_entries(.value |= (
+              (if has("source_path") then .backup_path = .source_path | del(.source_path) else . end)
+              | (if has("target_path") then .original_path = .target_path | del(.target_path) else . end)
+          ))' "$path" > "$tmp"
+      mv "$tmp" "$path"
+
+      echo "migrated: $path (backup: $backup)"
+  }
+
+  migrate_file "$DFM_ROOT/config.registry.json"
+  migrate_file "$DFM_ROOT/encrypted.registry.json"
+  ```
 
 ## v1.0.0
 
