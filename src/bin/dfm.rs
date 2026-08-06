@@ -1,4 +1,4 @@
-#[path = "dotfiles-manager/app.rs"]
+#[path = "dotfiles-manager/app/mod.rs"]
 pub(crate) mod app;
 
 use color_eyre::eyre::Result;
