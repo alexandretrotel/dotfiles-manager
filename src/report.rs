@@ -101,7 +101,10 @@ mod tests {
         assert_eq!(outcome.id, "id-1");
         assert_eq!(outcome.label, "~/.zshrc");
         assert!(outcome.is_done());
-        assert!(matches!(outcome.status, RegistryEntryStatus::Done { note: None }));
+        assert!(matches!(
+            outcome.status,
+            RegistryEntryStatus::Done { note: None }
+        ));
     }
 
     #[test]
@@ -132,7 +135,9 @@ mod tests {
     #[test]
     fn section_report_with_outcomes_is_not_empty() {
         let mut report = SectionReport::default();
-        report.outcomes.push(RegistryEntryOutcome::done("id-1", "a"));
+        report
+            .outcomes
+            .push(RegistryEntryOutcome::done("id-1", "a"));
         assert!(!report.is_empty());
     }
 
@@ -146,7 +151,9 @@ mod tests {
     #[test]
     fn succeeded_and_skipped_counts_reflect_outcome_mix() {
         let mut report = SectionReport::default();
-        report.outcomes.push(RegistryEntryOutcome::done("id-1", "a"));
+        report
+            .outcomes
+            .push(RegistryEntryOutcome::done("id-1", "a"));
         report
             .outcomes
             .push(RegistryEntryOutcome::done_with_note("id-2", "b", "note"));
