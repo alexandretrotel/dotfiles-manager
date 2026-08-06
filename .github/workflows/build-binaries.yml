@@ -32,4 +32,5 @@ jobs:
 
       - name: Verify binaries exist
         run: |
-          ls -la target/release/dotfm
+          ls -la target/release/dotfiles-manager
+          ls -la target/release/dfm

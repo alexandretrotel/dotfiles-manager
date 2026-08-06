@@ -9,26 +9,26 @@ pub(crate) const PROFILES_DIR: &str = "profiles";
 pub(crate) const PACKAGES_DIR: &str = "packages";
 
 /// Name of the encrypted bundle file inside an encrypted backup directory.
-pub const ENCRYPTED_BUNDLE_FILE: &str = "dotfm-encrypted-bundle.age";
-/// Name of the profile configuration file inside the dotfm root.
+pub const ENCRYPTED_BUNDLE_FILE: &str = "dfm-encrypted-bundle.age";
+/// Name of the profile configuration file inside the dfm root.
 pub const PROFILE_CONFIG_FILE: &str = "profiles.json";
 pub(crate) const ACTIVE_PROFILE_FILE: &str = ".active-profile";
 
-/// Handle to a dotfm data directory (by default `~/.dotfm`).
+/// Handle to a dfm data directory (by default `~/.dfm`).
 ///
-/// All library operations take a `&Dotfm` so tests and embedders can point
+/// All library operations take a `&Dfm` so tests and embedders can point
 /// them at any root directory.
 #[derive(Debug, Clone)]
-pub struct Dotfm {
+pub struct Dfm {
     root: PathBuf,
 }
 
-impl Dotfm {
-    /// Open the default root at `~/.dotfm`.
+impl Dfm {
+    /// Open the default root at `~/.dfm`.
     pub fn new() -> Result<Self> {
         let home_dir = dirs::home_dir().ok_or(Error::NoHomeDir)?;
         Ok(Self {
-            root: home_dir.join(".dotfm"),
+            root: home_dir.join(".dfm"),
         })
     }
 
@@ -37,7 +37,7 @@ impl Dotfm {
         Self { root: root.into() }
     }
 
-    /// The dotfm data directory itself.
+    /// The dfm data directory itself.
     pub fn root(&self) -> &Path {
         &self.root
     }

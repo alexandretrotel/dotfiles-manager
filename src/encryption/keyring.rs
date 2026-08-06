@@ -5,7 +5,7 @@ use keyring_core::{Entry, Error as KeyringError, set_default_store};
 
 use crate::error::{Error, Result, WrapErr};
 
-const KEYRING_SERVICE: &str = "dotfm";
+const KEYRING_SERVICE: &str = "dotfiles-manager";
 const KEYRING_USERNAME: &str = "encryption";
 
 /// Register the platform-native keychain backend as the default
@@ -36,7 +36,7 @@ fn init_default_keyring_store() -> Result<()> {
     ))
 }
 
-/// The dotfm entry in the system keychain, initializing the default store
+/// The dfm entry in the system keychain, initializing the default store
 /// on first call.
 fn keyring_entry() -> Result<Entry> {
     static INIT: OnceLock<Result<()>> = OnceLock::new();

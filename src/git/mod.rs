@@ -2,11 +2,11 @@ use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-use crate::context::Dotfm;
+use crate::context::Dfm;
 use crate::error::{Error, Result};
 use crate::utils::process::run_cmd;
 
-/// Repository setup actions performed while preparing the dotfm root.
+/// Repository setup actions performed while preparing the dfm root.
 #[derive(Debug, Clone, Default)]
 pub struct InitReport {
     /// A new git repository was initialized (false when one already existed).
@@ -15,9 +15,9 @@ pub struct InitReport {
     pub gitignore_created: bool,
 }
 
-/// Run a git command in the dotfm repository, inheriting this process's
+/// Run a git command in the dfm repository, inheriting this process's
 /// stdio (output streams directly to the terminal).
-pub fn passthrough(ctx: &Dotfm, args: &[String]) -> Result<()> {
+pub fn passthrough(ctx: &Dfm, args: &[String]) -> Result<()> {
     ensure_git_repo(ctx)?;
     let args_ref: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
     run_cmd_passthrough("git", &args_ref, Some(ctx.root()))
@@ -48,9 +48,9 @@ pub(crate) fn run_cmd_passthrough(cmd: &str, args: &[&str], dir: Option<&Path>) 
     Ok(())
 }
 
-/// Fail unless the dotfm root already is a git repository; also make sure a
+/// Fail unless the dfm root already is a git repository; also make sure a
 /// default `.gitignore` exists.
-pub fn ensure_git_repo(ctx: &Dotfm) -> Result<()> {
+pub fn ensure_git_repo(ctx: &Dfm) -> Result<()> {
     if !ctx.root().join(".git").exists() {
         return Err(Error::NoGitRepository {
             path: ctx.root().to_path_buf(),
@@ -61,8 +61,8 @@ pub fn ensure_git_repo(ctx: &Dotfm) -> Result<()> {
     Ok(())
 }
 
-/// Initialize a git repository in the dotfm root when none exists.
-pub fn init_repo_if_missing(ctx: &Dotfm) -> Result<InitReport> {
+/// Initialize a git repository in the dfm root when none exists.
+pub fn init_repo_if_missing(ctx: &Dfm) -> Result<InitReport> {
     let root = ctx.root();
     if root.join(".git").exists() {
         let gitignore_created = ensure_gitignore_exists(root)?;
@@ -89,7 +89,7 @@ fn ensure_gitignore_exists(root: &Path) -> Result<bool> {
         return Ok(false);
     }
 
-    let default_gitignore = "# dotfm
+    let default_gitignore = "# dfm
 .active-profile
 
 # log files

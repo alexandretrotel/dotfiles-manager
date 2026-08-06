@@ -3,7 +3,7 @@ use std::io::Write;
 use std::path::Path;
 use std::thread;
 
-use crate::context::Dotfm;
+use crate::context::Dfm;
 use crate::error::{Result, WrapErr};
 use crate::registry::{PackageRegistry, PackageRegistryEntry};
 use crate::report::{ItemOutcome, SectionReport};
@@ -12,7 +12,7 @@ use crate::utils::process::run_cmd;
 
 /// Run every platform-compatible, enabled package manager export command in
 /// parallel and write its output into `packages_path`.
-pub(super) fn backup_packages(ctx: &Dotfm, packages_path: &Path) -> Result<SectionReport> {
+pub(super) fn backup_packages(ctx: &Dfm, packages_path: &Path) -> Result<SectionReport> {
     let package_registry_path = ctx.package_registry_path();
     let package_registry = PackageRegistry::load_or_create(&package_registry_path)
         .wrap_err_with(|| format!("Load package registry: {}", package_registry_path.display()))?;

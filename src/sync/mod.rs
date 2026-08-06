@@ -3,7 +3,7 @@ use std::process::Command;
 
 use chrono::Utc;
 
-use crate::context::Dotfm;
+use crate::context::Dfm;
 use crate::error::{Error, Result, WrapErr};
 use crate::git;
 use crate::utils::process::run_cmd;
@@ -17,7 +17,7 @@ pub struct SyncReport {
 
 /// Stage everything, commit when there are changes, and push. Git's push
 /// output streams directly to the terminal.
-pub fn run(ctx: &Dotfm, message: Option<&str>) -> Result<SyncReport> {
+pub fn run(ctx: &Dfm, message: Option<&str>) -> Result<SyncReport> {
     git::ensure_git_repo(ctx)?;
     let repo_dir = ctx.root();
 
@@ -41,7 +41,7 @@ fn commit_message(message: Option<&str>) -> String {
         Some(msg) => msg.to_string(),
         None => {
             let stamp = Utc::now().format("%Y-%m-%d %H:%M:%S UTC");
-            format!("chore: sync dotfm ({stamp})")
+            format!("chore: sync dfm ({stamp})")
         }
     }
 }

@@ -1,4 +1,4 @@
-//! JSON-backed registries describing what dotfm backs up: plain configs,
+//! JSON-backed registries describing what dfm backs up: plain configs,
 //! package-manager exports, and encrypted files.
 
 pub mod config;

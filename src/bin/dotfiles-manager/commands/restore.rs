@@ -1,15 +1,15 @@
 use anstream::println;
 use color_eyre::eyre::{Result, WrapErr};
-use dotfm::Dotfm;
-use dotfm::profiles::ActiveProfile;
+use dotfiles_manager::Dfm;
+use dotfiles_manager::profiles::ActiveProfile;
 
 use super::with_suggestions;
 use crate::cli::RestoreArgs;
 use crate::output::{green, print_section_with_summary};
 use crate::prompt;
 
-/// Handle `dotfm restore`.
-pub fn run(ctx: &Dotfm, args: RestoreArgs) -> Result<()> {
+/// Handle `dfm restore`.
+pub fn run(ctx: &Dfm, args: RestoreArgs) -> Result<()> {
     let profile = ActiveProfile::resolve(ctx, None);
 
     let password =
@@ -18,7 +18,7 @@ pub fn run(ctx: &Dotfm, args: RestoreArgs) -> Result<()> {
     println!("Restoring...");
     println!("   Target: {}", profile);
 
-    let report = dotfm::restore::run(ctx, &profile, password.as_ref())
+    let report = dotfiles_manager::restore::run(ctx, &profile, password.as_ref())
         .map_err(with_suggestions)
         .wrap_err("Restore failed")?;
 

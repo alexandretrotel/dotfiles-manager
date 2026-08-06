@@ -1,23 +1,23 @@
 use age::secrecy::SecretString;
 use anstream::println;
 use color_eyre::eyre::{Result, WrapErr};
-use dotfm::Dotfm;
-use dotfm::profiles::ActiveProfile;
+use dotfiles_manager::Dfm;
+use dotfiles_manager::profiles::ActiveProfile;
 
 use super::with_suggestions;
 use crate::cli::BackupArgs;
 use crate::output::{green, print_section_with_summary};
 use crate::prompt;
 
-/// Handle `dotfm backup`.
-pub fn run(ctx: &Dotfm, args: BackupArgs) -> Result<()> {
+/// Handle `dfm backup`.
+pub fn run(ctx: &Dfm, args: BackupArgs) -> Result<()> {
     let profile = ActiveProfile::resolve(ctx, args.profile.as_deref());
     let password = resolve_backup_password(args.skip_encrypted, args.ask_password)?;
 
     println!("Backing up...");
     println!("   Target: {}", profile);
 
-    let report = dotfm::backup::run(ctx, &profile, password.as_ref())
+    let report = dotfiles_manager::backup::run(ctx, &profile, password.as_ref())
         .map_err(with_suggestions)
         .wrap_err("Backup failed")?;
 

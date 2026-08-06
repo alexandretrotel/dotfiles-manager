@@ -4,7 +4,7 @@ use std::path::Path;
 
 use age::secrecy::SecretString;
 
-use crate::context::Dotfm;
+use crate::context::Dfm;
 use crate::encryption::{
     create_temp_file, decrypt_file, load_tar_member_map, set_private_file_permissions,
 };
@@ -14,7 +14,7 @@ use crate::report::{ItemOutcome, SectionReport};
 
 /// Restore every enabled encrypted registry entry from the encrypted bundle.
 pub(super) fn restore_encrypted_configs(
-    ctx: &Dotfm,
+    ctx: &Dfm,
     profile: &ActiveProfile,
     password: &SecretString,
 ) -> SectionReport {

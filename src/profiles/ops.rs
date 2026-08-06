@@ -2,7 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 
 use super::{ProfileConfig, clear_active_profile, get_active_profile_name, set_active_profile};
-use crate::context::Dotfm;
+use crate::context::Dfm;
 use crate::error::{Error, Result, WrapErr};
 
 /// Profile names that mean "no profile, common layer only".
@@ -40,7 +40,7 @@ pub enum SwitchProfileOutcome {
 /// Register a new profile and create its backup directory. Fails if the
 /// name is empty, invalid, or already taken.
 pub fn create_profile(
-    ctx: &Dotfm,
+    ctx: &Dfm,
     name: &str,
     description: Option<String>,
 ) -> Result<CreatedProfile> {
@@ -88,7 +88,7 @@ pub fn create_profile(
 
 /// Remove a profile from the profile config. Fails if it doesn't exist or is
 /// currently active; its backup directory (if any) is left on disk.
-pub fn delete_profile(ctx: &Dotfm, name: &str) -> Result<DeletedProfile> {
+pub fn delete_profile(ctx: &Dfm, name: &str) -> Result<DeletedProfile> {
     let path = ctx.profiles_config_path();
     let mut config = ProfileConfig::load_or_default(ctx);
 
@@ -117,7 +117,7 @@ pub fn delete_profile(ctx: &Dotfm, name: &str) -> Result<DeletedProfile> {
 }
 
 /// Switch the active profile. Passing `common` or `none` clears it.
-pub fn switch_profile(ctx: &Dotfm, name: &str) -> Result<SwitchProfileOutcome> {
+pub fn switch_profile(ctx: &Dfm, name: &str) -> Result<SwitchProfileOutcome> {
     if COMMON_PROFILE_NAMES.contains(&name) {
         clear_active_profile(ctx)?;
         return Ok(SwitchProfileOutcome::Cleared);

@@ -2,13 +2,13 @@ use std::fs;
 use std::path::Path;
 
 use super::fs_ops::{backup_directory, backup_file};
-use crate::context::Dotfm;
+use crate::context::Dfm;
 use crate::error::{Result, WrapErr};
 use crate::registry::ConfigRegistry;
 use crate::report::{ItemOutcome, SectionReport};
 
 /// Copy every enabled config registry entry into `configs_path`.
-pub(super) fn backup_configs(ctx: &Dotfm, configs_path: &Path) -> Result<SectionReport> {
+pub(super) fn backup_configs(ctx: &Dfm, configs_path: &Path) -> Result<SectionReport> {
     let config_registry_path = ctx.config_registry_path();
     let config_registry = ConfigRegistry::load_or_create(&config_registry_path)
         .wrap_err_with(|| format!("Load config registry: {}", config_registry_path.display()))?;

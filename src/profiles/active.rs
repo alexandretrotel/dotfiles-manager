@@ -2,7 +2,7 @@ use std::fs;
 use std::io;
 use std::path::PathBuf;
 
-use crate::context::Dotfm;
+use crate::context::Dfm;
 
 /// The profile a backup or restore run targets: either a named profile
 /// layered on top of `common`, or `common` alone.
@@ -34,9 +34,9 @@ impl ActiveProfile {
     }
 
     /// Resolve the target profile: an explicit override wins, then the
-    /// `DOTFM_PROFILE` environment variable, then the persisted active
+    /// `DFM_PROFILE` environment variable, then the persisted active
     /// profile, then `common`.
-    pub fn resolve(ctx: &Dotfm, override_profile: Option<&str>) -> Self {
+    pub fn resolve(ctx: &Dfm, override_profile: Option<&str>) -> Self {
         if let Some(profile) = override_profile {
             return Self::with_profile(profile);
         }
@@ -49,7 +49,7 @@ impl ActiveProfile {
     }
 
     /// This profile's backup directory (profile layer or `common`).
-    pub fn backup_path(&self, ctx: &Dotfm) -> PathBuf {
+    pub fn backup_path(&self, ctx: &Dfm) -> PathBuf {
         match &self.name {
             Some(name) => ctx.profile_dir(name),
             None => ctx.common_dir(),
@@ -57,7 +57,7 @@ impl ActiveProfile {
     }
 
     /// This profile's encrypted-files directory (profile layer or `common`).
-    pub fn encrypted_backup_path(&self, ctx: &Dotfm) -> PathBuf {
+    pub fn encrypted_backup_path(&self, ctx: &Dfm) -> PathBuf {
         match &self.name {
             Some(name) => ctx.encrypted_profile_dir(name),
             None => ctx.encrypted_common_dir(),
@@ -65,10 +65,10 @@ impl ActiveProfile {
     }
 }
 
-/// Name of the active profile, from `DOTFM_PROFILE` or the persisted
+/// Name of the active profile, from `DFM_PROFILE` or the persisted
 /// `.active-profile` file.
-pub fn get_active_profile_name(ctx: &Dotfm) -> Option<String> {
-    if let Ok(profile) = std::env::var("DOTFM_PROFILE") {
+pub fn get_active_profile_name(ctx: &Dfm) -> Option<String> {
+    if let Ok(profile) = std::env::var("DFM_PROFILE") {
         let trimmed = profile.trim();
         if !trimmed.is_empty() {
             return Some(trimmed.to_string());
@@ -87,7 +87,7 @@ pub fn get_active_profile_name(ctx: &Dotfm) -> Option<String> {
 }
 
 /// Persist `profile_name` as the active profile.
-pub fn set_active_profile(ctx: &Dotfm, profile_name: &str) -> io::Result<()> {
+pub fn set_active_profile(ctx: &Dfm, profile_name: &str) -> io::Result<()> {
     let active_profile_path = ctx.active_profile_path();
     if let Some(parent) = active_profile_path.parent() {
         fs::create_dir_all(parent)?;
@@ -96,7 +96,7 @@ pub fn set_active_profile(ctx: &Dotfm, profile_name: &str) -> io::Result<()> {
 }
 
 /// Remove the persisted active profile, if any.
-pub fn clear_active_profile(ctx: &Dotfm) -> io::Result<()> {
+pub fn clear_active_profile(ctx: &Dfm) -> io::Result<()> {
     let active_profile_path = ctx.active_profile_path();
     if active_profile_path.exists() {
         fs::remove_file(active_profile_path)?;

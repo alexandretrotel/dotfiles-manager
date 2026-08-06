@@ -1,13 +1,13 @@
 use anstream::println;
 use color_eyre::eyre::Result;
-use dotfm::Dotfm;
-use dotfm::profiles::{SwitchProfileOutcome, switch_profile};
+use dotfiles_manager::Dfm;
+use dotfiles_manager::profiles::{SwitchProfileOutcome, switch_profile};
 
 use super::with_suggestions;
 use crate::cli::UseArgs;
 
-/// Handle `dotfm use <profile>`.
-pub fn run(ctx: &Dotfm, args: UseArgs) -> Result<()> {
+/// Handle `dfm use <profile>`.
+pub fn run(ctx: &Dfm, args: UseArgs) -> Result<()> {
     match switch_profile(ctx, &args.profile).map_err(with_suggestions)? {
         SwitchProfileOutcome::Cleared => {
             println!("Switched to common (no active profile)");
@@ -18,7 +18,7 @@ pub fn run(ctx: &Dotfm, args: UseArgs) -> Result<()> {
         SwitchProfileOutcome::Switched(name) => {
             println!("Switched to profile '{}'", name);
             println!();
-            println!("Run 'dotfm restore' to apply this profile's configurations");
+            println!("Run 'dfm restore' to apply this profile's configurations");
         }
     }
     Ok(())

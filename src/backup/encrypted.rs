@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use age::secrecy::SecretString;
 
-use crate::context::{Dotfm, ENCRYPTED_BUNDLE_FILE};
+use crate::context::{Dfm, ENCRYPTED_BUNDLE_FILE};
 use crate::encryption::{
     collect_dir_tar_entries, create_temp_file, encrypt_file, write_entries_tar,
 };
@@ -18,7 +18,7 @@ type ArchiveEntry = (String, String, Vec<(String, PathBuf)>);
 /// encrypt it into a single bundle at `encrypted_backup_path`. Removes any
 /// existing bundle when there's nothing to archive.
 pub(super) fn backup_encrypted_configs(
-    ctx: &Dotfm,
+    ctx: &Dfm,
     encrypted_backup_path: &Path,
     password: &SecretString,
 ) -> Result<SectionReport> {

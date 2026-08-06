@@ -2,7 +2,7 @@ use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(
-    name = "dotfm",
+    name = "dotfiles-manager",
     version = env!("CARGO_PKG_VERSION"),
     about = "A Rust-based command-line tool for dotfiles management with profiles."
 )]
@@ -25,10 +25,10 @@ pub enum Command {
     #[command(about = "Manage profiles (list, create, delete)")]
     Profile(ProfileArgs),
 
-    #[command(about = "Run git commands in the dotfm repository")]
+    #[command(about = "Run git commands in the dfm repository")]
     Git(GitArgs),
 
-    #[command(about = "Stage, commit, and push to the dotfm repository")]
+    #[command(about = "Stage, commit, and push to the dfm repository")]
     Sync(SyncArgs),
 
     #[command(
@@ -120,7 +120,7 @@ pub struct SyncArgs {
     #[arg(
         long,
         short = 'm',
-        help = "Custom commit message; defaults to chore: sync dotfm (<UTC date time>) when omitted"
+        help = "Custom commit message; defaults to chore: sync dfm (<UTC date time>) when omitted"
     )]
     pub message: Option<String>,
 }

@@ -1,13 +1,13 @@
 use anstream::println;
 use color_eyre::eyre::Result;
-use dotfm::Dotfm;
-use dotfm::profiles::{self, ProfileConfig};
+use dotfiles_manager::Dfm;
+use dotfiles_manager::profiles::{self, ProfileConfig};
 
 use super::with_suggestions;
 use crate::cli::{ProfileActions, ProfileArgs};
 
-/// Handle `dotfm profile` (list/create/delete).
-pub fn run(ctx: &Dotfm, args: ProfileArgs) -> Result<()> {
+/// Handle `dfm profile` (list/create/delete).
+pub fn run(ctx: &Dfm, args: ProfileArgs) -> Result<()> {
     match args.action {
         Some(ProfileActions::List) => list(ctx),
         Some(ProfileActions::Create { name, description }) => {
@@ -18,7 +18,7 @@ pub fn run(ctx: &Dotfm, args: ProfileArgs) -> Result<()> {
                 println!("   Description: {}", desc);
             }
             println!();
-            println!("Switch to this profile with: dotfm use {}", created.name);
+            println!("Switch to this profile with: dfm use {}", created.name);
             Ok(())
         }
         Some(ProfileActions::Delete { name }) => {
@@ -39,14 +39,14 @@ pub fn run(ctx: &Dotfm, args: ProfileArgs) -> Result<()> {
             println!();
             list(ctx)?;
             println!();
-            println!("Use 'dotfm use <profile>' to switch profiles");
+            println!("Use 'dfm use <profile>' to switch profiles");
             Ok(())
         }
     }
 }
 
 /// Print all known profiles, marking the active one.
-fn list(ctx: &Dotfm) -> Result<()> {
+fn list(ctx: &Dfm) -> Result<()> {
     let config = ProfileConfig::load_or_default(ctx);
     let profiles_list = config.list_profiles();
     let current = profiles::get_active_profile_name(ctx);
@@ -54,7 +54,7 @@ fn list(ctx: &Dotfm) -> Result<()> {
     if profiles_list.is_empty() {
         println!("No profiles configured");
         println!();
-        println!("Create a profile with: dotfm profile create <name>");
+        println!("Create a profile with: dfm profile create <name>");
         return Ok(());
     }
 

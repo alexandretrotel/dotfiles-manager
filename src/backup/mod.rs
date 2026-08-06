@@ -1,5 +1,5 @@
 //! Back up configs, package-manager lists, and encrypted configs to the
-//! dotfm root.
+//! dfm root.
 
 mod config;
 mod encrypted;
@@ -10,7 +10,7 @@ use std::fs;
 
 use age::secrecy::SecretString;
 
-use crate::context::Dotfm;
+use crate::context::Dfm;
 use crate::error::Result;
 use crate::git;
 use crate::profiles::ActiveProfile;
@@ -30,7 +30,7 @@ pub struct BackupReport {
 /// Back up configs, package lists, and (when `password` is given) encrypted
 /// configs for `profile`.
 pub fn run(
-    ctx: &Dotfm,
+    ctx: &Dfm,
     profile: &ActiveProfile,
     password: Option<&SecretString>,
 ) -> Result<BackupReport> {

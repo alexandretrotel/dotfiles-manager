@@ -1,12 +1,12 @@
 [package]
-name = "dotfm"
+name = "dotfiles-manager"
 version = "1.0.0"
 edition = "2024"
 description = "A Rust-based command-line tool for dotfiles management with profiles."
 authors = ["Alexandre Trotel"]
-documentation = "https://docs.rs/dotfm"
-repository = "https://github.com/alexandretrotel/dotfm"
-homepage = "https://github.com/alexandretrotel/dotfm"
+documentation = "https://docs.rs/dotfiles-manager"
+repository = "https://github.com/alexandretrotel/dotfiles-manager"
+homepage = "https://github.com/alexandretrotel/dotfiles-manager"
 license = "GPL-3.0-or-later"
 include = ["src/**/*.rs", "Cargo.toml", "README.md", "LICENSE", "CHANGELOG.md"]
 
@@ -15,11 +15,16 @@ default = ["cli"]
 cli = ["dep:clap", "dep:rpassword", "dep:color-eyre", "dep:anstream", "dep:anstyle"]
 
 [lib]
-name = "dotfm"
+name = "dotfiles_manager"
 
 [[bin]]
-name = "dotfm"
-path = "src/bin/dotfm/main.rs"
+name = "dotfiles-manager"
+path = "src/bin/dotfiles-manager/main.rs"
+required-features = ["cli"]
+
+[[bin]]
+name = "dfm"
+path = "src/bin/dotfiles-manager/main.rs"
 required-features = ["cli"]
 
 [dependencies]

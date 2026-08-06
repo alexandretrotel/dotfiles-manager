@@ -1,7 +1,7 @@
 use anstream::{eprintln, println};
 use anstyle::{AnsiColor, Style};
-use dotfm::doctor::{DoctorFixOutcome, DoctorFixReport, DoctorReport, Severity};
-use dotfm::{ItemStatus, SectionReport};
+use dotfiles_manager::doctor::{DoctorFixOutcome, DoctorFixReport, DoctorReport, Severity};
+use dotfiles_manager::{ItemStatus, SectionReport};
 
 const GREEN: Style = AnsiColor::Green.on_default();
 const YELLOW: Style = AnsiColor::Yellow.on_default();

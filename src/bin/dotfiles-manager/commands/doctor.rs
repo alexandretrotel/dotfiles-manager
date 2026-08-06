@@ -1,15 +1,15 @@
 use anstream::{eprintln, println};
 use color_eyre::eyre::{Result, WrapErr, eyre};
-use dotfm::Dotfm;
-use dotfm::profiles::{ActiveProfile, ProfileConfig};
+use dotfiles_manager::Dfm;
+use dotfiles_manager::profiles::{ActiveProfile, ProfileConfig};
 
 use super::with_suggestions;
 use crate::cli::{DoctorActions, DoctorArgs};
 use crate::output::{green, print_doctor_fix_report, print_doctor_report, red};
 use crate::prompt;
 
-/// Handle `dotfm doctor` (and `doctor fix`).
-pub fn run(ctx: &Dotfm, args: DoctorArgs) -> Result<()> {
+/// Handle `dfm doctor` (and `doctor fix`).
+pub fn run(ctx: &Dfm, args: DoctorArgs) -> Result<()> {
     if let Ok(true) = ProfileConfig::save_default_if_missing(ctx) {
         println!(
             "Created default profile config at {}",
@@ -25,12 +25,12 @@ pub fn run(ctx: &Dotfm, args: DoctorArgs) -> Result<()> {
     }
 }
 
-/// Handle `dotfm doctor fix`.
-fn fix(ctx: &Dotfm, profile: &ActiveProfile) -> Result<()> {
+/// Handle `dfm doctor fix`.
+fn fix(ctx: &Dfm, profile: &ActiveProfile) -> Result<()> {
     println!("Reformatting JSON configs...");
     println!("   Profile: {}", profile);
 
-    let report = dotfm::doctor::fix_json_configs(ctx, profile)
+    let report = dotfiles_manager::doctor::fix_json_configs(ctx, profile)
         .map_err(with_suggestions)
         .wrap_err("Doctor fix failed")?;
 
@@ -52,9 +52,9 @@ fn fix(ctx: &Dotfm, profile: &ActiveProfile) -> Result<()> {
     Ok(())
 }
 
-/// Handle `dotfm doctor` (validation, the default action).
+/// Handle `dfm doctor` (validation, the default action).
 fn validate(
-    ctx: &Dotfm,
+    ctx: &Dfm,
     profile: &ActiveProfile,
     skip_encrypted: bool,
     ask_password: bool,
@@ -65,7 +65,7 @@ fn validate(
     let password =
         prompt::optional_password(skip_encrypted, ask_password, "encrypted file validation");
 
-    let report = dotfm::doctor::validate(ctx, profile, password.as_ref());
+    let report = dotfiles_manager::doctor::validate(ctx, profile, password.as_ref());
     println!();
     print_doctor_report(&report);
     println!();

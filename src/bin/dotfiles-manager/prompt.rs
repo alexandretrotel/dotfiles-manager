@@ -26,7 +26,7 @@ pub fn prompt_password(confirm: bool) -> Result<SecretString> {
 /// Resolve the encryption password: the stored keychain password unless
 /// `ask_password` forces a prompt.
 pub fn resolve_password(ask_password: bool, confirm_on_prompt: bool) -> Result<SecretString> {
-    let stored = dotfm::encryption::keyring::get_stored_password();
+    let stored = dotfiles_manager::encryption::keyring::get_stored_password();
     let had_stored = stored.is_some();
     if !ask_password && let Some(password) = stored {
         return Ok(password);
@@ -34,7 +34,7 @@ pub fn resolve_password(ask_password: bool, confirm_on_prompt: bool) -> Result<S
     let password = prompt_password(confirm_on_prompt)?;
     if !had_stored {
         eprintln!(
-            "Tip: run `dotfm secret set` to save this password in your system keychain and skip prompts later."
+            "Tip: run `dfm secret set` to save this password in your system keychain and skip prompts later."
         );
     }
     Ok(password)

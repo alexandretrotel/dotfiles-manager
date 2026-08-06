@@ -3,7 +3,7 @@ mod encrypted;
 
 use age::secrecy::SecretString;
 
-use crate::context::Dotfm;
+use crate::context::Dfm;
 use crate::error::{Result, WrapErr};
 use crate::profiles::ActiveProfile;
 use crate::registry::ConfigRegistry;
@@ -31,7 +31,7 @@ impl RestoreReport {
 /// Restore configs and (when `password` is given) encrypted configs for
 /// `profile`.
 pub fn run(
-    ctx: &Dotfm,
+    ctx: &Dfm,
     profile: &ActiveProfile,
     password: Option<&SecretString>,
 ) -> Result<RestoreReport> {

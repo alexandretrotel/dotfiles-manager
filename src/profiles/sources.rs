@@ -1,7 +1,7 @@
 use std::path::{Component, Path, PathBuf};
 
 use super::ActiveProfile;
-use crate::context::{Dotfm, ENCRYPTED_BUNDLE_FILE};
+use crate::context::{Dfm, ENCRYPTED_BUNDLE_FILE};
 
 /// Which backup layer a source file was found in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -28,7 +28,7 @@ pub struct ResolvedSource {
 
 impl ActiveProfile {
     /// First existing backup of `source_path`, profile layer first.
-    pub fn resolve_source(&self, ctx: &Dotfm, source_path: &str) -> Option<ResolvedSource> {
+    pub fn resolve_source(&self, ctx: &Dfm, source_path: &str) -> Option<ResolvedSource> {
         Self::first_existing(self.get_candidate_sources(ctx, source_path))
     }
 
@@ -36,26 +36,26 @@ impl ActiveProfile {
     /// each candidate actually exists on disk).
     pub fn get_candidate_sources(
         &self,
-        ctx: &Dotfm,
+        ctx: &Dfm,
         source_path: &str,
     ) -> Vec<(PathBuf, SourceLayer)> {
-        self.candidate_paths(ctx, source_path, Dotfm::profile_dir, Dotfm::common_dir)
+        self.candidate_paths(ctx, source_path, Dfm::profile_dir, Dfm::common_dir)
     }
 
     /// Every existing backup of `source_path`, across all layers.
-    pub fn get_all_resolved_sources(&self, ctx: &Dotfm, source_path: &str) -> Vec<ResolvedSource> {
+    pub fn get_all_resolved_sources(&self, ctx: &Dfm, source_path: &str) -> Vec<ResolvedSource> {
         Self::all_existing(self.get_candidate_sources(ctx, source_path))
     }
 
     /// First existing encrypted bundle, profile layer first.
-    pub fn resolve_encrypted_bundle(&self, ctx: &Dotfm) -> Option<ResolvedSource> {
+    pub fn resolve_encrypted_bundle(&self, ctx: &Dfm) -> Option<ResolvedSource> {
         self.resolve_encrypted_source(ctx, ENCRYPTED_BUNDLE_FILE)
     }
 
     /// First existing encrypted backup of `source_path`, profile layer first.
     pub fn resolve_encrypted_source(
         &self,
-        ctx: &Dotfm,
+        ctx: &Dfm,
         source_path: &str,
     ) -> Option<ResolvedSource> {
         Self::first_existing(self.get_candidate_encrypted_sources(ctx, source_path))
@@ -65,14 +65,14 @@ impl ActiveProfile {
     /// first (whether or not each candidate actually exists on disk).
     pub fn get_candidate_encrypted_sources(
         &self,
-        ctx: &Dotfm,
+        ctx: &Dfm,
         source_path: &str,
     ) -> Vec<(PathBuf, SourceLayer)> {
         self.candidate_paths(
             ctx,
             source_path,
-            Dotfm::encrypted_profile_dir,
-            Dotfm::encrypted_common_dir,
+            Dfm::encrypted_profile_dir,
+            Dfm::encrypted_common_dir,
         )
     }
 
@@ -80,10 +80,10 @@ impl ActiveProfile {
     /// directory getters the caller passes (plain or encrypted).
     fn candidate_paths(
         &self,
-        ctx: &Dotfm,
+        ctx: &Dfm,
         source_path: &str,
-        profile_dir: impl Fn(&Dotfm, &str) -> PathBuf,
-        common_dir: impl Fn(&Dotfm) -> PathBuf,
+        profile_dir: impl Fn(&Dfm, &str) -> PathBuf,
+        common_dir: impl Fn(&Dfm) -> PathBuf,
     ) -> Vec<(PathBuf, SourceLayer)> {
         if !is_valid_source_path(source_path) {
             return Vec::new();

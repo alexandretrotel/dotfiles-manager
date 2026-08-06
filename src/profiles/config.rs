@@ -5,7 +5,7 @@ use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-use crate::context::Dotfm;
+use crate::context::Dfm;
 
 /// Metadata for one profile entry in [`ProfileConfig`].
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -38,7 +38,7 @@ impl ProfileConfig {
 
     /// Load `ctx`'s profile config, or an empty default if it doesn't exist
     /// or fails to parse.
-    pub fn load_or_default(ctx: &Dotfm) -> Self {
+    pub fn load_or_default(ctx: &Dfm) -> Self {
         Self::load(&ctx.profiles_config_path()).unwrap_or_default()
     }
 
@@ -81,7 +81,7 @@ impl ProfileConfig {
 
     /// Write an empty default config if none exists. Returns whether a file
     /// was created.
-    pub fn save_default_if_missing(ctx: &Dotfm) -> io::Result<bool> {
+    pub fn save_default_if_missing(ctx: &Dfm) -> io::Result<bool> {
         let path = ctx.profiles_config_path();
         if path.exists() {
             return Ok(false);

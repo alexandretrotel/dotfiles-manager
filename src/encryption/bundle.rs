@@ -113,6 +113,6 @@ pub fn set_private_file_permissions(path: &Path) -> Result<()> {
 /// dropped.
 pub fn create_temp_file(label: &str) -> std::io::Result<NamedTempFile> {
     tempfile::Builder::new()
-        .prefix(&format!("dotfm-{label}-"))
+        .prefix(&format!("dfm-{label}-"))
         .tempfile()
 }

@@ -6,7 +6,7 @@ mod prompt;
 use anstream::println;
 use clap::{CommandFactory, Parser};
 use color_eyre::eyre::Result;
-use dotfm::Dotfm;
+use dotfiles_manager::Dfm;
 
 use crate::cli::{Cli, Command};
 
@@ -15,7 +15,7 @@ fn main() -> Result<()> {
     color_eyre::install()?;
 
     let cli = Cli::parse();
-    let ctx = Dotfm::new()?;
+    let ctx = Dfm::new()?;
 
     match cli.command {
         Some(Command::Backup(args)) => commands::backup::run(&ctx, args),
