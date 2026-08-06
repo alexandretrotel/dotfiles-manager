@@ -293,4 +293,163 @@ mod tests {
         let err = restore_dir(&target, "missing-prefix", &members).unwrap_err();
         assert_eq!(err, "not in encrypted bundle");
     }
+
+    #[test]
+    fn restores_a_directory_member_from_the_encrypted_bundle() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path().join("dfm"));
+        let profile = ActiveProfile::common_only();
+        let password = SecretString::from("pw".to_string());
+
+        let target = dir.path().join("restored_dir");
+        let mut entries = HashMap::new();
+        entries.insert("ssh_keys".to_string(), entry("ssh/keys", target.clone()));
+        save_registry(&ctx, entries);
+
+        let source_a = dir.path().join("id_rsa");
+        let source_b = dir.path().join("id_rsa.pub");
+        fs::write(&source_a, b"private key").unwrap();
+        fs::write(&source_b, b"public key").unwrap();
+
+        let bundle_dir = profile.encrypted_backup_path(&ctx);
+        fs::create_dir_all(&bundle_dir).unwrap();
+        let tar_temp = create_temp_file("test-bundle-dir").unwrap();
+        write_entries_tar(
+            tar_temp.path(),
+            &[
+                ("ssh/keys/id_rsa", source_a.as_path()),
+                ("ssh/keys/id_rsa.pub", source_b.as_path()),
+            ],
+        )
+        .unwrap();
+        encrypt_file(
+            tar_temp.path(),
+            &bundle_dir.join(ENCRYPTED_BUNDLE_FILE),
+            &password,
+        )
+        .unwrap();
+
+        let report = restore_encrypted_configs(&ctx, &profile, &password);
+
+        assert_eq!(report.succeeded(), 1);
+        assert_eq!(fs::read(target.join("id_rsa")).unwrap(), b"private key");
+        assert_eq!(
+            fs::read(target.join("id_rsa.pub")).unwrap(),
+            b"public key"
+        );
+    }
+
+    #[test]
+    fn entry_not_present_in_bundle_is_skipped_not_a_hard_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path().join("dfm"));
+        let profile = ActiveProfile::common_only();
+        let password = SecretString::from("pw".to_string());
+
+        let target = dir.path().join("restored.txt");
+        let mut entries = HashMap::new();
+        entries.insert(
+            "missing".to_string(),
+            entry("not-in-bundle.txt", target.clone()),
+        );
+        save_registry(&ctx, entries);
+
+        // Bundle exists but has no member matching the entry's source path.
+        let other_source = dir.path().join("other.txt");
+        fs::write(&other_source, b"unrelated content").unwrap();
+        let bundle_dir = profile.encrypted_backup_path(&ctx);
+        fs::create_dir_all(&bundle_dir).unwrap();
+        let tar_temp = create_temp_file("test-bundle-missing-member").unwrap();
+        write_entries_tar(tar_temp.path(), &[("other.txt", other_source.as_path())]).unwrap();
+        encrypt_file(
+            tar_temp.path(),
+            &bundle_dir.join(ENCRYPTED_BUNDLE_FILE),
+            &password,
+        )
+        .unwrap();
+
+        let report = restore_encrypted_configs(&ctx, &profile, &password);
+
+        assert_eq!(report.succeeded(), 0);
+        assert_eq!(report.skipped(), 1);
+        assert!(!target.exists());
+    }
+
+    #[test]
+    fn corrupt_bundle_that_fails_to_decrypt_produces_warning_not_hard_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path().join("dfm"));
+        let profile = ActiveProfile::common_only();
+        let password = SecretString::from("pw".to_string());
+
+        let mut entries = HashMap::new();
+        entries.insert(
+            "secret".to_string(),
+            entry("secret.txt", dir.path().join("target.txt")),
+        );
+        save_registry(&ctx, entries);
+
+        // Not valid age ciphertext, so decryption fails.
+        let bundle_dir = profile.encrypted_backup_path(&ctx);
+        fs::create_dir_all(&bundle_dir).unwrap();
+        fs::write(
+            bundle_dir.join(ENCRYPTED_BUNDLE_FILE),
+            b"not age ciphertext, just garbage bytes",
+        )
+        .unwrap();
+
+        let report = restore_encrypted_configs(&ctx, &profile, &password);
+
+        assert!(report.outcomes.is_empty());
+        assert_eq!(report.warnings.len(), 1);
+        assert!(report.warnings[0].contains("could not decrypt"));
+    }
+
+    #[test]
+    fn bundle_with_unreadable_tar_produces_warning_not_hard_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let ctx = Dfm::with_root(dir.path().join("dfm"));
+        let profile = ActiveProfile::common_only();
+        let password = SecretString::from("pw".to_string());
+
+        let mut entries = HashMap::new();
+        entries.insert(
+            "secret".to_string(),
+            entry("secret.txt", dir.path().join("target.txt")),
+        );
+        save_registry(&ctx, entries);
+
+        // Decrypts fine, but the payload isn't a valid tar archive.
+        let not_a_tar = dir.path().join("not-a-tar");
+        fs::write(&not_a_tar, b"not a tar file at all, just garbage bytes").unwrap();
+        let bundle_dir = profile.encrypted_backup_path(&ctx);
+        fs::create_dir_all(&bundle_dir).unwrap();
+        encrypt_file(
+            &not_a_tar,
+            &bundle_dir.join(ENCRYPTED_BUNDLE_FILE),
+            &password,
+        )
+        .unwrap();
+
+        let report = restore_encrypted_configs(&ctx, &profile, &password);
+
+        assert!(report.outcomes.is_empty());
+        assert_eq!(report.warnings.len(), 1);
+        assert!(
+            report.warnings[0].contains("could not read encrypted bundle archive"),
+            "unexpected warning: {}",
+            report.warnings[0]
+        );
+    }
+
+    #[test]
+    fn restore_file_creates_missing_parent_directories() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("nested/deep/target.txt");
+
+        let note = restore_file(&target, b"nested content").unwrap();
+
+        assert!(note.is_none());
+        assert_eq!(fs::read(&target).unwrap(), b"nested content");
+    }
 }
