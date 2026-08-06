@@ -57,9 +57,14 @@ impl Dfm {
         self.common_dir().join(ENCRYPTED_DIR)
     }
 
+    /// Directory holding all named profiles' backup layers.
+    pub fn profiles_root_dir(&self) -> PathBuf {
+        self.backup_dir().join(PROFILES_DIR)
+    }
+
     /// Directory holding `profile_name`'s backup layer.
     pub fn profile_dir(&self, profile_name: &str) -> PathBuf {
-        self.backup_dir().join(PROFILES_DIR).join(profile_name)
+        self.profiles_root_dir().join(profile_name)
     }
 
     /// Directory holding `profile_name`'s encrypted files.
@@ -132,6 +137,14 @@ mod tests {
         assert_eq!(
             fake_dfm().encrypted_common_dir(),
             PathBuf::from("/tmp/fake-dfm-root/backup/common/encrypted")
+        );
+    }
+
+    #[test]
+    fn profiles_root_dir_is_under_backup_dir() {
+        assert_eq!(
+            fake_dfm().profiles_root_dir(),
+            PathBuf::from("/tmp/fake-dfm-root/backup/profiles")
         );
     }
 

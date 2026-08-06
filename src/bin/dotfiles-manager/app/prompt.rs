@@ -1,3 +1,5 @@
+use std::io::{self, Write};
+
 use age::secrecy::SecretString;
 use anstream::eprintln;
 use color_eyre::eyre::{Result, WrapErr, bail};
@@ -38,6 +40,21 @@ pub fn resolve_password(ask_password: bool, confirm_on_prompt: bool) -> Result<S
         );
     }
     Ok(password)
+}
+
+/// Ask `question` as a `[y/N]` prompt. Any input other than exactly `y` or
+/// `Y` (including a blank line) counts as "no" — the caller must opt in
+/// explicitly, never by accident.
+pub fn confirm(question: &str) -> Result<bool> {
+    print!("{} [y/N]: ", question);
+    io::stdout().flush().wrap_err("Flush stdout")?;
+
+    let mut input = String::new();
+    io::stdin()
+        .read_line(&mut input)
+        .wrap_err("Read confirmation")?;
+
+    Ok(matches!(input.trim(), "y" | "Y"))
 }
 
 /// Resolve the password for an optional encrypted step. Returns `None` when

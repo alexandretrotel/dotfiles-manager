@@ -48,6 +48,11 @@ pub enum Command {
         #[command(subcommand)]
         action: SecretActions,
     },
+
+    #[command(
+        about = "Delete backup directories left behind by profiles that no longer exist"
+    )]
+    Prune,
 }
 
 #[derive(Subcommand)]
@@ -368,6 +373,12 @@ mod tests {
             Some(Command::Secret { action }) => assert!(matches!(action, SecretActions::Delete)),
             _ => panic!("expected Secret command"),
         }
+    }
+
+    #[test]
+    fn prune_parses_with_no_args() {
+        let cli = Cli::try_parse_from(["dfm", "prune"]).unwrap();
+        assert!(matches!(cli.command, Some(Command::Prune)));
     }
 
     #[test]

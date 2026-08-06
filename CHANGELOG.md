@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## v1.1.0
+
+### Added
+- **`dfm prune`** deletes backup directories left behind by profiles that no longer exist (e.g. a profile removed with `dfm profile delete`, which intentionally keeps its backup directory on disk). It lists the orphaned directories it finds and asks for confirmation — defaulting to "no" — before deleting anything.
+
 ## v1.0.0
 
 > **Note:** Versioning restarts at 1.0.0 following the rename from `mntn` to `dotfiles-manager`. This is not a downgrade — it is a fresh start for the `dotfiles-manager` crate name. The previous `mntn` history (up through v5.0.0) is preserved below for reference.
