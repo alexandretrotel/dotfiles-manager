@@ -2,7 +2,7 @@
 name = "dotfiles-manager"
 version = "1.0.0"
 edition = "2024"
-description = "A Rust-based command-line tool for dotfiles management with profiles."
+description = "Keep your dotfiles organized, safe, and consistent across machines using profiles."
 authors = ["Alexandre Trotel"]
 documentation = "https://docs.rs/dotfiles-manager"
 repository = "https://github.com/alexandretrotel/dotfiles-manager"
