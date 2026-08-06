@@ -429,7 +429,7 @@ mod tests {
     use std::collections::HashMap;
 
     use crate::context::{Dfm, ENCRYPTED_BUNDLE_FILE};
-    use crate::encryption::{encrypt_file, write_tar_archive, TarEntryRef};
+    use crate::encryption::{TarEntryRef, encrypt_file, write_tar_archive};
     use crate::registry::EncryptedRegistry;
 
     use super::*;

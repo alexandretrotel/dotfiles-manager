@@ -179,6 +179,7 @@ mod tests {
     use super::*;
     use crate::context::ENCRYPTED_BUNDLE_FILE;
     use crate::encryption::{encrypt_file, write_tar_archive};
+    use std::collections::HashMap;
     use std::path::PathBuf;
 
     fn entry(source_path: &str, target_path: PathBuf) -> EncryptedRegistryEntry {
