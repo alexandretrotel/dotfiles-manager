@@ -115,3 +115,136 @@ impl<T, E: Into<Error>> WrapErr<T> for std::result::Result<T, E> {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::error::Error as StdError;
+
+    use super::*;
+
+    #[test]
+    fn profile_not_found_displays_profile_name() {
+        assert_eq!(
+            Error::ProfileNotFound("work".to_string()).to_string(),
+            "profile 'work' does not exist"
+        );
+    }
+
+    #[test]
+    fn empty_password_has_fixed_message() {
+        assert_eq!(Error::EmptyPassword.to_string(), "password cannot be empty");
+    }
+
+    #[test]
+    fn invalid_repo_spec_displays_the_offending_spec() {
+        assert_eq!(
+            Error::InvalidRepoSpec("nope".to_string()).to_string(),
+            "'nope' is not a valid GitHub repo; use a URL or `owner/repo`"
+        );
+    }
+
+    #[test]
+    fn context_error_displays_its_message_not_the_source() {
+        let err = Error::Context {
+            msg: "failed to read config".to_string(),
+            source: Box::new(Error::EmptyPassword),
+        };
+        assert_eq!(err.to_string(), "failed to read config");
+    }
+
+    #[test]
+    fn wrap_err_attaches_message_and_preserves_source() {
+        let result: std::result::Result<(), Error> =
+            Err(Error::EmptyPassword).wrap_err("could not load profile");
+
+        let err = result.unwrap_err();
+        assert_eq!(err.to_string(), "could not load profile");
+        match &err {
+            Error::Context { msg, source } => {
+                assert_eq!(msg, "could not load profile");
+                assert!(matches!(**source, Error::EmptyPassword));
+            }
+            other => panic!("expected Error::Context, got {other:?}"),
+        }
+        assert_eq!(
+            StdError::source(&err).unwrap().to_string(),
+            "password cannot be empty"
+        );
+    }
+
+    #[test]
+    fn wrap_err_with_computes_message_lazily() {
+        let result: std::result::Result<(), Error> =
+            Err(Error::EmptyPassword).wrap_err_with(|| format!("attempt {}", 1 + 1));
+
+        assert_eq!(result.unwrap_err().to_string(), "attempt 2");
+    }
+
+    #[test]
+    fn wrap_err_passes_through_ok_values_unchanged() {
+        let result: std::result::Result<i32, std::io::Error> = Ok(42);
+        assert_eq!(result.wrap_err("unused").unwrap(), 42);
+    }
+
+    #[test]
+    fn encrypt_error_converts_to_encryption_variant() {
+        let err: Error = age::EncryptError::MissingRecipients.into();
+        assert!(matches!(err, Error::Encryption(_)));
+    }
+
+    #[test]
+    fn decrypt_error_decryption_failed_maps_to_incorrect_password() {
+        let err: Error = age::DecryptError::DecryptionFailed.into();
+        assert!(matches!(err, Error::IncorrectPassword));
+    }
+
+    #[test]
+    fn other_decrypt_errors_map_to_encryption_variant() {
+        let err: Error = age::DecryptError::InvalidHeader.into();
+        assert!(matches!(err, Error::Encryption(_)));
+
+        let err: Error = age::DecryptError::InvalidMac.into();
+        assert!(matches!(err, Error::Encryption(_)));
+    }
+
+    #[test]
+    fn is_password_error_true_for_incorrect_password() {
+        assert!(Error::IncorrectPassword.is_password_error());
+    }
+
+    #[test]
+    fn is_password_error_true_when_wrapped_once_in_context() {
+        let err = Error::Context {
+            msg: "decrypting bundle".to_string(),
+            source: Box::new(Error::IncorrectPassword),
+        };
+        assert!(err.is_password_error());
+    }
+
+    #[test]
+    fn is_password_error_true_when_wrapped_twice_in_context() {
+        let err = Error::Context {
+            msg: "outer".to_string(),
+            source: Box::new(Error::Context {
+                msg: "inner".to_string(),
+                source: Box::new(Error::IncorrectPassword),
+            }),
+        };
+        assert!(err.is_password_error());
+    }
+
+    #[test]
+    fn is_password_error_false_for_unrelated_error() {
+        assert!(!Error::EmptyPassword.is_password_error());
+    }
+
+    #[test]
+    fn is_password_error_false_for_wrapped_io_error() {
+        let io_err = std::io::Error::other("disk full");
+        let err = Error::Context {
+            msg: "reading file".to_string(),
+            source: Box::new(Error::Io(io_err)),
+        };
+        assert!(!err.is_password_error());
+    }
+}
