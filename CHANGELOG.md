@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## v1.1.3
+
+### Fixed
+- Windows CI test `writes_exported_package_list_to_output_file` still failed after v1.1.2: `cmd /C echo` writes CRLF line endings, but `run_single_package_backup` wrote the captured command output to the package-list file unchanged, so Windows backups contained `\r\n` where the test (and Unix backups) expected `\n`. Output is now normalized to `\n` before writing, regardless of platform.
+
 ## v1.1.2
 
 ### Fixed

@@ -71,7 +71,7 @@ fn run_single_package_backup(
         let content = run_cmd(&entry.command, &args, None)
             .wrap_err_with(|| format!("Command {} failed for {}", entry.command, id))?;
 
-        let content = strip_ansi_codes(&content);
+        let content = strip_ansi_codes(&content).replace("\r\n", "\n");
         let output_path = packages_path.join(&entry.output_file);
         let tmp_path = output_path.with_extension("tmp");
 
