@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## v1.1.2
+
+### Fixed
+- `dfm restore`/`dfm doctor` on Windows accepted Unix-style rooted backup paths (e.g. `/etc/passwd`) as valid, letting a crafted `backup_path` in the registry escape the backup directory when joined onto it. `is_valid_backup_path` checked `Path::is_absolute()`, which on Windows requires a drive prefix (`C:\`) and so misses paths that only have a root — those still override the base path in `PathBuf::join`. The check now also rejects any path with `has_root()`.
+- Windows CI test `writes_exported_package_list_to_output_file` was flaky/failing: it passed a single command-line argument containing an embedded newline (`"package-a\npackage-b"`) and expected it to survive to the child process unsplit. Windows argument parsing treats embedded newlines as a token separator, so `echo` received two separate arguments and rejoined them with a space instead. The test now drives the newline via a per-platform shell (`cmd /C` on Windows, `sh -c` elsewhere) instead of relying on raw arg content.
+
 ## v1.1.1
 
 ### Fixed

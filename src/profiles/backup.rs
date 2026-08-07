@@ -105,6 +105,12 @@ impl ActiveProfile {
 /// Rejects empty paths, absolute paths, and paths with `..` components —
 /// `backup_path` is later joined onto a backup directory, so it must not be
 /// able to escape it.
+///
+/// Checks `has_root()` in addition to `is_absolute()`: on Windows, a
+/// Unix-style rooted path like `/etc/passwd` has no drive prefix so
+/// `is_absolute()` is false, yet `PathBuf::join` still treats its root as
+/// replacing everything but the base's prefix — `is_absolute()` alone would
+/// let it escape the backup directory.
 fn is_valid_backup_path(backup_path: &str) -> bool {
     if backup_path.is_empty() {
         return false;
@@ -112,6 +118,7 @@ fn is_valid_backup_path(backup_path: &str) -> bool {
 
     let path = Path::new(backup_path);
     !path.is_absolute()
+        && !path.has_root()
         && !path
             .components()
             .any(|component| matches!(component, Component::ParentDir))

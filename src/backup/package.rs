@@ -124,10 +124,14 @@ mod tests {
         let ctx = Dfm::with_root(dir.path().join("dfm"));
 
         let mut entries = HashMap::new();
-        entries.insert(
-            "fake".to_string(),
-            entry("echo", vec!["package-a\npackage-b"], "fake.txt"),
-        );
+        // A single arg with an embedded newline isn't reliably preserved
+        // through Windows argv splitting, so drive the newline from a
+        // per-platform shell instead of relying on raw arg content.
+        #[cfg(windows)]
+        let (command, args) = ("cmd", vec!["/C", "echo package-a&& echo package-b"]);
+        #[cfg(not(windows))]
+        let (command, args) = ("sh", vec!["-c", "echo package-a; echo package-b"]);
+        entries.insert("fake".to_string(), entry(command, args, "fake.txt"));
         save_registry(&ctx, entries);
 
         let packages_path = dir.path().join("packages");
