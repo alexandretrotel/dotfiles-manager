@@ -1,3 +1,5 @@
+//! Git repository setup and passthrough commands for the dfm root.
+
 use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};

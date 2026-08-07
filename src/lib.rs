@@ -16,6 +16,8 @@
 //! # Ok::<(), dotfiles_manager::Error>(())
 //! ```
 
+#![warn(missing_docs)]
+
 pub mod backup;
 mod context;
 pub mod doctor;

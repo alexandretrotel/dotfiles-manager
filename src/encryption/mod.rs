@@ -2,6 +2,7 @@
 //! the system-keychain-backed password store.
 
 mod bundle;
+/// System-keychain-backed storage for the encryption passphrase.
 pub mod keyring;
 
 use std::fs;

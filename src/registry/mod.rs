@@ -1,8 +1,11 @@
 //! JSON-backed registries describing what dfm backs up: plain configs,
 //! package-manager exports, and encrypted files.
 
+/// Registry entries for plain (unencrypted) config files.
 pub mod config;
+/// Registry entries for files backed up as an encrypted bundle.
 pub mod encrypted;
+/// Registry entries for package-manager export lists.
 pub mod package;
 
 use std::path::Path;

@@ -1,6 +1,6 @@
 [package]
 name = "dotfiles-manager"
-version = "1.1.0"
+version = "1.1.1"
 edition = "2024"
 description = "Keep your dotfiles organized, safe, and consistent across machines using profiles."
 authors = ["Alexandre Trotel"]

@@ -2,6 +2,11 @@
 
 All notable changes to this project are documented in this file.
 
+## v1.1.1
+
+### Fixed
+- Missing rustdoc on public modules and struct fields, now enforced via `#![warn(missing_docs)]` in `src/lib.rs`.
+
 ## v1.1.0
 
 ### Added

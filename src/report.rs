@@ -3,9 +3,15 @@
 pub enum RegistryEntryStatus {
     /// Entry was processed; `note` carries any extra information (e.g. a
     /// symlink that was converted to a real file along the way).
-    Done { note: Option<String> },
+    Done {
+        /// Extra information about how the entry was processed, if any.
+        note: Option<String>,
+    },
     /// Entry was skipped; `reason` explains why.
-    Skipped { reason: String },
+    Skipped {
+        /// Why the entry was skipped.
+        reason: String,
+    },
 }
 
 /// Result for one registry entry processed during a backup or restore run,
