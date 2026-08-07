@@ -56,6 +56,7 @@ dfm use work
 | `diff`    | Shortcut for `dfm git diff`                                               |
 | `sync`    | Commit and push changes inside `~/.dfm`                                   |
 | `secret`  | Store or remove the encryption passphrase in the OS keychain              |
+| `prune`   | Delete backup directories left behind by profiles that no longer exist    |
 | `edit`    | Open a registry/config file (`config`, `package`, `encrypted`, `profiles`) in an editor |
 
 **Encrypted configs:** run `dfm secret set` once you know your passphrase to persist it. Pass `--ask-password` to `backup`, `restore`, or `doctor` to type the passphrase for that run instead (bypassing the keychain) — encrypted files are still processed either way.
